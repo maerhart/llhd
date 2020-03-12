@@ -18,7 +18,7 @@ index d082e16026b..2ce129be297 100644
  DEFINE_SYM_KIND_RANGE(XLA_HLO) // XLA HLO dialect
  DEFINE_SYM_KIND_RANGE(SHAPE) // Shape dialect
  
-+DEFINE_SYM_KIND_RANGE(STENCIL)
++DEFINE_SYM_KIND_RANGE(LLHD)
 +
  // The following ranges are reserved for experimenting with MLIR dialects in a
  // private context without having to register them here.
