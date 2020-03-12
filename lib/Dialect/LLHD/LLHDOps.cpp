@@ -33,23 +33,29 @@ using namespace mlir;
 // LLHD Operations
 //===---------------------------------------------------------------------===//
 
-//===---------------------------------------------------------------------===//
-// ConstOp
+//=== ConstOp
 
+/// Parse an LLHD const operation with following syntax:
+/// op ::= llhd.const type literal
 static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
     IntegerAttr value;
+    Type type;
     if (parser.parseOptionalAttrDict(result.attributes) ||
+        parser.parseType(type) ||
         parser.parseAttribute(value, "value", result.attributes))
         return failure();
 
+    auto res = type.dyn_cast<IntegerType>();
+    if (!res) return failure();
     result.addTypes(value.getType());
     return success();
 }
 
+/// print an LLHD const operation
 static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
     printer << "llhd.const ";
-    printer.printOptionalAttrDict(op.getAttrs(), {"value"});
-    printer << op.value();
+    printer.printType(op.getType());
+    printer << " " << op.value();
 }
 
 static LogicalResult verify(llhd::ConstOp op) { return success(); }

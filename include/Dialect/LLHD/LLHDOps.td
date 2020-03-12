@@ -26,7 +26,7 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 
     let builders = [
         // Build a constant with a given constant integer value.
-        OpBuilder<"Builder *builder, OperationState &state, double value">
+        OpBuilder<"Builder *builder, OperationState &state, int value">
     ];
 }
 
