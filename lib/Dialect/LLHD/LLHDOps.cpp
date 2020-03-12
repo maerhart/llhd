@@ -1,5 +1,9 @@
 #include "Dialect/LLHD/LLHDOps.h"
 #include "Dialect/LLHD/LLHDDialect.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/iterator_range.h"
+#include "llvm/Support/raw_ostream.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Block.h"
@@ -17,10 +21,6 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Support/STLExtras.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/iterator_range.h"
-#include "llvm/Support/raw_ostream.h"
 // #include <bits/stdint-intn.h>
 #include <cstddef>
 #include <functional>
@@ -28,7 +28,6 @@
 //#include <llvm-9/llvm/ADT/STLExtras.h>
 
 using namespace mlir;
-
 
 //===---------------------------------------------------------------------===//
 // LLHD Operations
@@ -48,18 +47,16 @@ static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
 }
 
 static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
-    printer << "llhd.const";
+    printer << "llhd.const ";
     printer.printOptionalAttrDict(op.getAttrs(), {"value"});
     printer << op.value();
 }
 
-static LogicalResult verify(llhd::ConstOp op) {
-    return success();
-}
+static LogicalResult verify(llhd::ConstOp op) { return success(); }
 
 namespace mlir {
 namespace llhd {
 #define GET_OP_CLASSES
 #include "Dialect/LLHD/LLHDOps.cpp.inc"
-} // namespace llhd
-} // namespace mlir
+}    // namespace llhd
+}    // namespace mlir
