@@ -1,4 +1,4 @@
-//RUN: llhdc %s | llhdc %s | FileCheck %s
+//RUN: llhdc %s | llhdc | FileCheck %s
 
 // CHECK-LABEL: func @lap
 func @lap() -> i64 {

@@ -33,7 +33,7 @@ using namespace mlir;
 // LLHD Operations
 //===---------------------------------------------------------------------===//
 
-//=== ConstOp
+// ConstOp
 
 /// Parse an LLHD const operation with following syntax:
 /// op ::= llhd.const type literal
