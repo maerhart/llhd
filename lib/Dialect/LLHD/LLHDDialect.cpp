@@ -50,6 +50,7 @@ Type LLHDDialect::parseType(DialectAsmParser &parser) const {
 }
 
 void LLHDDialect::printType(Type type, DialectAsmPrinter &printer) const {
+    // for now print and parse using the syntax: sig ::= !llhd.sig<type>.
     SigType sig = type.cast<SigType>();
     printer << "sig<";
     printer.printType(sig.getUnderlyingType());
