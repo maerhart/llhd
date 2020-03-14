@@ -40,14 +40,13 @@ using namespace mlir;
 static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
     IntegerAttr value;
     Type type;
-    if (parser.parseOptionalAttrDict(result.attributes) ||
-        parser.parseType(type) ||
+    if (parser.parseType(type) ||
         parser.parseAttribute(value, "value", result.attributes))
         return failure();
 
-    auto res = type.dyn_cast<IntegerType>();
-    if (!res) return failure();
-    result.addTypes(value.getType());
+    // auto res = type.dyn_cast<IntegerType>();
+    // if (!res) return failure();
+    result.addTypes(type);
     return success();
 }
 
@@ -58,7 +57,11 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
     printer << " " << op.value();
 }
 
-static LogicalResult verify(llhd::ConstOp op) { return success(); }
+static LogicalResult verify(llhd::ConstOp op) {
+    if (!op.getType().isa<IntegerType>() && !op.getType().isa<llhd::SigType>())
+        return failure();
+    return success();
+}
 
 namespace mlir {
 namespace llhd {
