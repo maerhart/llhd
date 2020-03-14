@@ -1,13 +1,13 @@
 #ifndef MLIR_DIALECT_LLHD_LLHDOPS_H
 #define MLIR_DIALECT_LLHD_LLHDOPS_H
 
+#include <numeric>
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Function.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Module.h"
 #include "mlir/IR/StandardTypes.h"
 #include "mlir/Interfaces/SideEffects.h"
-#include <numeric>
 
 namespace mlir {
 namespace llhd {
@@ -16,7 +16,7 @@ namespace llhd {
 #define GET_OP_CLASSES
 #include "Dialect/LLHD/LLHDOps.h.inc"
 
-} // namespace llhd
-} // namespace mlir
+}    // namespace llhd
+}    // namespace mlir
 
-#endif // MLIR_DIALECT_LLHD_LLHDOPS_H
+#endif    // MLIR_DIALECT_LLHD_LLHDOPS_H

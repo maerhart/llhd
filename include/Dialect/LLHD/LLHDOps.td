@@ -5,6 +5,7 @@
 include "Dialect/LLHD/LLHDBase.td"
 #endif // LLHD_BASE
 
+
 def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     let summary = "Constant";
 
@@ -19,9 +20,9 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
         time is a time literal such as `1s`, `1s 2d`, or `1s 2d 3e`, where the real component may carry an SI prefix such as `as`, `fs`, `ps`, `ns`, `us`, `ms`.
     }];
 
-    let arguments = (ins AnyI64Attr:$value);
+    let arguments = (ins I64Attr:$value);
     
-    let results = (outs I64);
+    let results = (outs LLHD_Type);
 
 
     let builders = [

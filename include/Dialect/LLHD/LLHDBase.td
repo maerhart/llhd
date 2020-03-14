@@ -22,9 +22,14 @@ def LLHD_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 // LLHD type definitions
 //===----------------------------------------------------------------------===//
+// LLHD sig type
+def LLHD_SigType : Type<CPred<"$_self.isa<SigType>()">, "LLHD sig type">;
 
+// LLHD elementary typse
 def LLHD_ElementType : AnyTypeOf<[I64]>;
 
+// LLHD full list of types
+def LLHD_Type : AnyTypeOf<[LLHD_ElementType, LLHD_SigType]>;
 //===----------------------------------------------------------------------===//
 // LLHD op definition
 //===----------------------------------------------------------------------===//
