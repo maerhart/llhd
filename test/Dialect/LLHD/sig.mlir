@@ -1,4 +1,4 @@
-// RUN: llhdc %s | FileCheck %s
+// RUN: llhdc %s | llhdc | FileCheck %s
 
 // CHECK-LABEL: func @foo
 // CHECK-NEXT: %{{.*}} = llhd.const !llhd.sig<i64> 1
