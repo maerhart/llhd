@@ -57,11 +57,7 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
     printer << " " << op.value();
 }
 
-static LogicalResult verify(llhd::ConstOp op) {
-    if (!op.getType().isa<IntegerType>() && !op.getType().isa<llhd::SigType>())
-        return failure();
-    return success();
-}
+static LogicalResult verify(llhd::ConstOp op) { return success(); }
 
 namespace mlir {
 namespace llhd {
