@@ -90,6 +90,58 @@ static void print(OpAsmPrinter &printer, llhd::SigOp op) {
 
 static LogicalResult verify(llhd::SigOp op) { return success(); }
 
+// Prb Op
+
+/// Parse an LLHD prb operation with the following syntax:
+/// op ::= llhd.prb !llhd.sig<type> %operand
+static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
+    llhd::SigType sigType;
+    OpAsmParser::OperandType operand;
+    if (parser.parseType(sigType) || parser.parseOperand(operand))
+        return failure();
+    if (parser.resolveOperand(operand, sigType, result.operands))
+        return failure();
+
+    result.addTypes(sigType.getUnderlyingType());
+    return success();
+}
+
+/// Print an LLHD prb operation
+static void print(OpAsmPrinter &printer, llhd::PrbOp op) {
+    printer << "llhd.prb ";
+    printer.printType(llhd::SigType::get(op.getType()));
+    printer << " ";
+    printer.printOperand(op.signal());
+}
+
+static LogicalResult verify(llhd::PrbOp op) { return success(); }
+
+// Drv Op
+
+/// Parse an LLHD drv operation with the following syntax:
+/// op ::= llhd.drv !llhd.sig<type> %signal, %value
+static ParseResult parseDrvOp(OpAsmParser &parser, OperationState &result) {
+    llvm::SmallVector<OpAsmParser::OperandType, 2> operands;
+    llhd::SigType sigType;
+    if (parser.parseType(sigType) || parser.parseOperandList(operands, 2))
+        return failure();
+    if (parser.resolveOperand(operands[0], sigType, result.operands) ||
+        parser.resolveOperand(operands[1], sigType.getUnderlyingType(),
+                              result.operands))
+        return failure();
+
+    return success();
+}
+
+/// Print an LLHD drv operation
+static void print(OpAsmPrinter &printer, llhd::DrvOp op) {
+    printer << "llhd.drv ";
+    printer.printType(op.signal().getType());
+    printer << " " << op.getOperands();
+}
+
+static LogicalResult verify(llhd::DrvOp op) { return success(); }
+
 namespace mlir {
 namespace llhd {
 #define GET_OP_CLASSES

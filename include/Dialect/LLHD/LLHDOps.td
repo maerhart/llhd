@@ -40,13 +40,46 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 
         The `sig` instruction creates a signal in an entity with the initial value `%init` and returns that signal.
 
-        `T` may be any type.  
-        `%init` is the initial value of the signal and must be of type `T`.  
-        `%result` is of type `T$`.  
+        * `T` may be any type.  
+        * `%init` is the initial value of the signal and must be of type `T`.  
+        * `%result` is of type `T$`.  
     }];
 
-    let arguments = (ins LLHD_ElementType: $init);
+    let arguments = (ins LLHD_ElementType:$init);
     let results = (outs LLHD_SigType);
+}
+
+def LLHD_PrbOp : LLHD_Op<"prb", []> {
+    let summary = "Probe a signal";
+    let description = [{
+        ```
+        %result = prb T$ %sig
+        ```
+        The `prb` instruction probes the current value of a signal `%sig`.
+
+        * `T` may be any type.
+        * `%sig` must be of type `T$`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_SigType:$signal);
+    let results = (outs LLHD_ElementType:$output);
+}
+
+def LLHD_DrvOp : LLHD_Op<"drv"> {
+    let summary = "Drive a value into a signal";
+    let description = [{
+        ```
+        drv T$ %sig, %value
+        ```
+        The drv instruction drives a `%value` onto a signal `%sig`.
+
+        * `T` may be any type.
+        * `%sig` must be of type `T$`.
+        * `%value` must be of type `T`.
+    }];
+
+let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
 }
 
 #endif // LLHD_OPS
