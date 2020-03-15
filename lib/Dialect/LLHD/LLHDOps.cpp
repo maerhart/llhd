@@ -59,6 +59,37 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
 
 static LogicalResult verify(llhd::ConstOp op) { return success(); }
 
+// Sig Op
+
+/// Parse an LLHD sig operation with the following syntax:
+/// op ::= llhd.sig type %operand
+static ParseResult parseSigOp(OpAsmParser &parser, OperationState &result) {
+    OpAsmParser::OperandType operand;
+    Type sigType;
+    if (parser.parseType(sigType) || parser.parseOperand(operand) ||
+        parser.parseOptionalAttrDict(result.attributes))
+        return failure();
+
+    if (parser.resolveOperand(operand, sigType, result.operands))
+        return failure();
+
+    result.addTypes(llhd::SigType::get(sigType));
+
+    return success();
+}
+
+/// Print an LLHD sig operation
+static void print(OpAsmPrinter &printer, llhd::SigOp op) {
+    // get the resulting signal type
+    llhd::SigType opType = op.getType().dyn_cast<llhd::SigType>();
+    printer << "llhd.sig ";
+    printer.printType(opType.getUnderlyingType());
+    printer << " ";
+    printer.printOperand(op.init());
+}
+
+static LogicalResult verify(llhd::SigOp op) { return success(); }
+
 namespace mlir {
 namespace llhd {
 #define GET_OP_CLASSES

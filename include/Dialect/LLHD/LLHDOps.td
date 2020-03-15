@@ -5,7 +5,6 @@
 include "Dialect/LLHD/LLHDBase.td"
 #endif // LLHD_BASE
 
-
 def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     let summary = "Constant";
 
@@ -27,8 +26,27 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 
     let builders = [
         // Build a constant with a given constant integer value.
-        OpBuilder<"Builder *builder, OperationState &state, int value">
+        OpBuilder<"Builder *builder, OperationState &state, int64_t value">
     ];
+}
+
+def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
+    let summary = "Create a signal";
+
+    let description = [{
+        ```
+        %result = sig T %init
+        ```
+
+        The `sig` instruction creates a signal in an entity with the initial value `%init` and returns that signal.
+
+        `T` may be any type.  
+        `%init` is the initial value of the signal and must be of type `T`.  
+        `%result` is of type `T$`.  
+    }];
+
+    let arguments = (ins LLHD_ElementType: $init);
+    let results = (outs LLHD_SigType);
 }
 
 #endif // LLHD_OPS

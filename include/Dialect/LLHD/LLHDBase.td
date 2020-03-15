@@ -30,6 +30,7 @@ def LLHD_ElementType : AnyTypeOf<[I64]>;
 
 // LLHD full list of types
 def LLHD_Type : AnyTypeOf<[LLHD_ElementType, LLHD_SigType]>;
+
 //===----------------------------------------------------------------------===//
 // LLHD op definition
 //===----------------------------------------------------------------------===//
