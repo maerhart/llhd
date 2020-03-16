@@ -1,13 +1,13 @@
 #include "Dialect/LLHD/LLHDOps.h"
 #include "Dialect/LLHD/LLHDDialect.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/iterator_range.h"
-#include "llvm/Support/raw_ostream.h"
+// #include "llvm/ADT/STLExtras.h"
+// #include "llvm/ADT/iterator_range.h"
+// #include "llvm/Support/raw_ostream.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Block.h"
-#include "mlir/IR/BlockAndValueMapping.h"
+// #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Function.h"
 #include "mlir/IR/Module.h"
@@ -52,7 +52,7 @@ static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
 
 /// print an LLHD const operation
 static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
-    printer << "llhd.const ";
+    printer << op.getOperationName() << " ";
     printer.printType(op.getType());
     printer << " " << op.value();
 }
@@ -82,7 +82,7 @@ static ParseResult parseSigOp(OpAsmParser &parser, OperationState &result) {
 static void print(OpAsmPrinter &printer, llhd::SigOp op) {
     // get the resulting signal type
     llhd::SigType opType = op.getType().dyn_cast<llhd::SigType>();
-    printer << "llhd.sig ";
+    printer << op.getOperationName() << " ";
     printer.printType(opType.getUnderlyingType());
     printer << " ";
     printer.printOperand(op.init());
@@ -108,7 +108,7 @@ static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
 
 /// Print an LLHD prb operation
 static void print(OpAsmPrinter &printer, llhd::PrbOp op) {
-    printer << "llhd.prb ";
+    printer << op.getOperationName() << " ";
     printer.printType(llhd::SigType::get(op.getType()));
     printer << " ";
     printer.printOperand(op.signal());
@@ -135,7 +135,7 @@ static ParseResult parseDrvOp(OpAsmParser &parser, OperationState &result) {
 
 /// Print an LLHD drv operation
 static void print(OpAsmPrinter &printer, llhd::DrvOp op) {
-    printer << "llhd.drv ";
+    printer << op.getOperationName() << " ";
     printer.printType(op.signal().getType());
     printer << " " << op.getOperands();
 }
