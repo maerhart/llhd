@@ -1,11 +1,11 @@
 // RUN: llhdc %s | llhdc | FileCheck %s
 
 // CHECK-LABEL: func @foo
-// CHECK-NEXT: %{{.*}} = llhd.const !llhd.sig<i64> 1
-// CHECK-NEXT: %{{.*}} = llhd.const i64 254
-// CHECK-NEXT: %{{.*}} = llhd.sig i64 %{{.*}}
-// CHECK-NEXT: %{{.*}} = llhd.prb !llhd.sig<i64> %{{.*}}
-// CHECK-NEXT: llhd.drv !llhd.sig<i64> %{{.*}}, %{{.*}}
+// CHECK-NEXT: %{{.*}} = llhd.const 1 : !llhd.sig<i64>
+// CHECK-NEXT: %{{.*}} = llhd.const 254 : i64
+// CHECK-NEXT: %{{.*}} = llhd.sig %{{.*}} : i64 
+// CHECK-NEXT: %{{.*}} = llhd.prb %{{.*}} : !llhd.sig<i64>
+// CHECK-NEXT: llhd.drv %{{.*}}, %{{.*}} : !llhd.sig<i64>
 // CHECK-NEXT: return %{{.*}} : !llhd.sig<i64>
 // CHECK-NEXT: }
 func @foo() -> !llhd.sig<i64> {

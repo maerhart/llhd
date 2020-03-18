@@ -21,8 +21,9 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 
     let arguments = (ins I64Attr:$value);
     
-    let results = (outs LLHD_Type);
+    let results = (outs LLHD_Type:$out);
 
+    let assemblyFormat = "$value attr-dict `:` type($out)";
 
     let builders = [
         // Build a constant with a given constant integer value.
