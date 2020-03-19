@@ -157,7 +157,7 @@ static LogicalResult verify(llhd::DrvOp op) {
             << opType;
     }
 
-    success();
+    return success();
 }
 
 // Entity Op
@@ -190,6 +190,46 @@ static LogicalResult verify(llhd::EntityOp op) {
     }
     return success();
 }
+
+// Bitwise Operations
+static LogicalResult verify(llhd::NotOp op) { return success(); }
+static LogicalResult verify(llhd::AndOp op) { return success(); }
+static LogicalResult verify(llhd::OrOp op) { return success(); }
+static LogicalResult verify(llhd::XorOp op) { return success(); }
+
+static LogicalResult verify(llhd::ShlOp op) { 
+    if (op.base().getType() != op.result().getType()) {
+        op.emitError("The output of the Shl operation is required to have the "
+            "same type as the base value (first operand), (") 
+            << op.base().getType() << " vs. " << op.result().getType() << ")";
+        return failure();
+    }
+
+    // TODO: verify that T and Th only differ in the number of bits or elements
+
+    return success(); 
+}
+
+static LogicalResult verify(llhd::ShrOp op) { 
+    if (op.base().getType() != op.result().getType()) {
+        op.emitError("The output of the Shl operation is required to have the "
+            "same type as the base value (first operand), (") 
+            << op.base().getType() << " vs. " << op.result().getType() << ")";
+        return failure();
+    }
+
+    // TODO: verify that T and Th only differ in the number of bits or elements
+
+    return success(); 
+}
+
+// Arithmetic Operations
+static LogicalResult verify(llhd::NegOp op) { return success(); }
+static LogicalResult verify(llhd::AddOp op) { return success(); }
+static LogicalResult verify(llhd::SubOp op) { return success(); }
+static LogicalResult verify(llhd::SMulOp op) { return success(); }
+static LogicalResult verify(llhd::UMulOp op) { return success(); }
+
 
 namespace mlir {
 namespace llhd {

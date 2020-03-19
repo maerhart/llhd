@@ -25,11 +25,19 @@ def LLHD_Dialect : Dialect {
 // LLHD sig type
 def LLHD_SigType : Type<CPred<"$_self.isa<SigType>()">, "LLHD sig type">;
 
-// LLHD elementary typse
-def LLHD_ElementType : AnyTypeOf<[I64]>;
+// Signed or unsigned integer of any width
+// TODO: why does "def LLHD_iN : AnyInteger;" not work?
+def LLHD_iN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
+
+// TODO: replace this with nine-valued logic type, it's just a placeholder such
+//       that the instructions don't have to be updated
+def LLHD_lN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
+
+// LLHD elementary types
+def LLHD_ElementType : AnyTypeOf<[LLHD_iN]>;
 
 // LLHD full list of types
-def LLHD_Type : AnyTypeOf<[LLHD_ElementType, LLHD_SigType]>;
+def LLHD_Type : AnyTypeOf<[LLHD_iN, LLHD_SigType]>;
 
 //===----------------------------------------------------------------------===//
 // LLHD op definition

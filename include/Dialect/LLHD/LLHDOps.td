@@ -103,4 +103,311 @@ def LLHD_Terminator : LLHD_Op<"terminator", [Terminator]> {
     let verifier = ?;
 }
 
+//===----------------------------------------------------------------------===//
+//=== Bitwise Operations
+//===----------------------------------------------------------------------===//
+
+def LLHD_NotOp : LLHD_Op<"not", [NoSideEffect, SameOperandsAndResultType]> {
+    let summary = "Flips each bit of a value.";
+    let description = [{
+        ```
+        %result = llhd.not(%value) : (T) -> T
+        ```
+        * `T` must be `iN` or `lN`.
+        * `%value` is the input argument of type `T`.
+        * `%result` is of type `T`.
+
+        Truth Table for `iN`:
+
+        | `not` |  0  |  1  |
+        |:-----:|:---:|:---:|
+        |       |  1  |  0  |
+
+        Truth Table for `lN`:
+        TODO
+        | `not` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
+        |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+        |       |     |     |     |     |     |     |     |     |     |
+    }];
+
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Computes the bitwise AND of two values.";
+    let description = [{
+        ```
+        %result = llhd.and(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN` or `lN`.
+        * `%lhs` and `%rhs` are the input arguments of type `T`.
+        * `%result` is of type `T`.
+
+        Truth Table for `iN`:
+
+        | `and` |  0  |  1  |
+        |:-----:|:---:|:---:|
+        |   0   |  0  |  0  |
+        |   1   |  0  |  1  |
+
+        Truth Table for `lN`:
+        TODO
+        | `and` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
+        |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+        |   U   |     |     |     |     |     |     |     |     |     |
+        |   X   |     |     |     |     |     |     |     |     |     |
+        |   0   |     |     |     |     |     |     |     |     |     |
+        |   1   |     |     |     |     |     |     |     |     |     |
+        |   Z   |     |     |     |     |     |     |     |     |     |
+        |   W   |     |     |     |     |     |     |     |     |     |
+        |   L   |     |     |     |     |     |     |     |     |     |
+        |   H   |     |     |     |     |     |     |     |     |     |
+        |   -   |     |     |     |     |     |     |     |     |     |
+    }];
+
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_OrOp : LLHD_Op<"or", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Computes the bitwise OR of two values.";
+    let description = [{
+        ```
+        %result = llhd.or(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN` or `lN`.
+        * `%lhs` and `%rhs` are the input arguments of type `T`.
+        * `%result` is of type `T`.
+
+        Truth Table for `iN`:
+
+        | `or`  |  0  |  1  |
+        |:-----:|:---:|:---:|
+        |   0   |  0  |  0  |
+        |   1   |  0  |  1  |
+
+        Truth Table for `lN`:
+        TODO
+        | `or`  |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
+        |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+        |   U   |     |     |     |     |     |     |     |     |     |
+        |   X   |     |     |     |     |     |     |     |     |     |
+        |   0   |     |     |     |     |     |     |     |     |     |
+        |   1   |     |     |     |     |     |     |     |     |     |
+        |   Z   |     |     |     |     |     |     |     |     |     |
+        |   W   |     |     |     |     |     |     |     |     |     |
+        |   L   |     |     |     |     |     |     |     |     |     |
+        |   H   |     |     |     |     |     |     |     |     |     |
+        |   -   |     |     |     |     |     |     |     |     |     |
+    }];
+
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_XorOp : LLHD_Op<"xor", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Computes the bitwise XOR of two values.";
+    let description = [{
+        ```
+        %result = llhd.xor(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN` or `lN`.
+        * `%lhs` and `%rhs` are the input arguments of type `T`.
+        * `%result` is of type `T`.
+
+        Truth Table for `iN`:
+
+        | `xor` |  0  |  1  |
+        |:-----:|:---:|:---:|
+        |   0   |  0  |  0  |
+        |   1   |  0  |  1  |
+
+        Truth Table for `lN`:
+        TODO
+        | `xor` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
+        |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+        |   U   |     |     |     |     |     |     |     |     |     |
+        |   X   |     |     |     |     |     |     |     |     |     |
+        |   0   |     |     |     |     |     |     |     |     |     |
+        |   1   |     |     |     |     |     |     |     |     |     |
+        |   Z   |     |     |     |     |     |     |     |     |     |
+        |   W   |     |     |     |     |     |     |     |     |     |
+        |   L   |     |     |     |     |     |     |     |     |     |
+        |   H   |     |     |     |     |     |     |     |     |     |
+        |   -   |     |     |     |     |     |     |     |     |     |
+    }];
+
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
+    let summary = "Shifts a value to the left by a given amount.";
+    let description = [{
+        The instruction is transparent to signals and pointers. For example, \
+        passing a signal as argument will shift the underlying value and return \
+        a signal to the shifted value.
+
+        ```
+        %result = llhd.shl(%base, %hidden, %amount) : (T, Th, Ta) -> T
+        ```
+        * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
+        * `Th` must be of the same type as T, but may have a different number \
+          of bits of elements.
+        * The maximum shift amount is determined by the number of bits or \
+          elements in `Th`.
+        * `Ta` must be `iN`.
+        * `%base` is the base value that is produced if the shift amount is 0, \
+          and must be of type `T`.
+        * `%hidden` is the hidden value that is uncovered by non-zero shift \
+          amounts, and must be of type `Th`.
+        * `%amount` is the unsigned shift amount and determines by how many \
+          positions the value is to be shifted. Must be of type `Ta`. Behavior \
+          for values `%amount > N` is undefined.
+        * `%result` is of type `T`.
+    }];
+
+    // TODO: adjust type T and Th to include arrays and pointers
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
+                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
+                         LLHD_iN:$amount);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
+    let summary = "Shifts a value to the right by a given amount.";
+    let description = [{
+        The instruction is transparent to signals and pointers. For example, \
+        passing a signal as argument will shift the underlying value and return \
+        a signal to the shifted value.
+
+        ```
+        %result = llhd.shr(%base, %hidden, %amount) : (T, Th, Ta) -> T
+        ```
+        * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
+        * `Th` must be of the same type as T, but may have a different number \
+          of bits of elements.
+        * The maximum shift amount is determined by the number of bits or \
+          elements in `Th`.
+        * `Ta` must be `iN`.
+        * `%base` is the base value that is produced if the shift amount is 0, \
+          and must be of type `T`.
+        * `%hidden` is the hidden value that is uncovered by non-zero shift \
+          amounts, and must be of type `Th`.
+        * `%amount` is the unsigned shift amount and determines by how many \
+          positions the value is to be shifted. Must be of type `Ta`. Behavior \
+          for values `%amount > N` is undefined.
+        * `%result` is of type `T`.
+    }];
+
+    // TODO: adjust type T and Th to include arrays and pointers
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
+                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
+                         AnySignlessInteger:$amount);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+
+//===----------------------------------------------------------------------===//
+//=== Arithmetic Operations
+//===----------------------------------------------------------------------===//
+
+def LLHD_NegOp : LLHD_Op<"neg", [NoSideEffect, SameOperandsAndResultType]> {
+    let summary = "Negate a value.";
+    let description = [{
+        ```
+        %result = llhd.neg(%value) : (T) -> T
+        ```
+        * `T` must be `iN`
+        * `%value` is the input argument of type `T`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_iN:$value);
+    let results = (outs LLHD_iN);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_AddOp : LLHD_Op<"add", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Add two values.";
+    let description = [{
+        ```
+        %result = llhd.add(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN`
+        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let results = (outs LLHD_iN);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_SubOp : LLHD_Op<"sub", [NoSideEffect, SameOperandsAndResultType]> {
+    let summary = "Subtract two values.";
+    let description = [{
+        ```
+        %result = llhd.sub(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN`
+        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let results = (outs LLHD_iN);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_SMulOp : LLHD_Op<"smul", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Signed multiplication of two values.";
+    let description = [{
+        ```
+        %result = llhd.smul(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN`
+        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let results = (outs LLHD_iN);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
+def LLHD_UMulOp : LLHD_Op<"umul", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
+    let summary = "Unsigned multiplication of two values.";
+    let description = [{
+        ```
+        %result = llhd.smul(%lhs, %rhs) : (T, T) -> T
+        ```
+        * `T` must be `iN`
+        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
+        * `%result` is of type `T`.
+    }];
+
+    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let results = (outs LLHD_iN);
+
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+}
+
 #endif // LLHD_OPS
