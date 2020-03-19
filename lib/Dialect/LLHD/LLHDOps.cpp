@@ -10,6 +10,7 @@
 // #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/Function.h"
+#include "mlir/IR/FunctionImplementation.h"
 #include "mlir/IR/Module.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/OperationSupport.h"
@@ -163,29 +164,95 @@ static LogicalResult verify(llhd::DrvOp op) {
 // Entity Op
 
 static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
+    StringAttr entityName;
+    SmallVector<OpAsmParser::OperandType, 4> inArgs, outArgs;
+    SmallVector<Type, 4> inTypes, outTypes;
+    int64_t nIns = 0;
+
+    if (parser.parseSymbolName(entityName, SymbolTable::getSymbolAttrName(),
+                               result.attributes))
+        return failure();
+
+    parser.parseLParen();
+    // TODO : move signature parsing logic in helper functions
+    do {
+        OpAsmParser::OperandType argument;
+        Type argType;
+        if (succeeded(parser.parseOptionalRegionArgument(argument)) &&
+            !argument.name.empty())
+            inArgs.push_back(argument);
+        if (!argument.name.empty() && (parser.parseColonType(argType))) {
+            inTypes.push_back(argType);
+            ++nIns;
+        }
+    } while (succeeded(parser.parseOptionalComma()));
+    if (parser.parseRParen() || parser.parseArrow() || parser.parseLParen())
+        return failure();
+    do {
+        OpAsmParser::OperandType argument;
+        Type argType;
+        if (succeeded(parser.parseOptionalRegionArgument(argument)) &&
+            !argument.name.empty())
+            inArgs.push_back(argument);
+        if (!argument.name.empty() && succeeded(parser.parseColonType(argType)))
+            inTypes.push_back(argType);
+    } while (succeeded(parser.parseOptionalComma()));
+    if (parser.parseRParen())
+        return failure();
+    IntegerAttr insAttr =
+        IntegerAttr::get(IntegerType::get(64, result.getContext()), nIns);
+    result.addAttribute("ins", insAttr);
+    auto *body = result.addRegion();
+    parser.parseOptionalRegion(*body, inArgs, inTypes);
+    llhd::EntityOp::ensureTerminator(*body, parser.getBuilder(),
+                                     result.location);
     return success();
 }
 
-static void print(OpAsmPrinter &printer, llhd::EntityOp op) {}
+static void printArgumentList(OpAsmPrinter &printer,
+                              std::vector<BlockArgument> args) {
+    printer << "(";
+    for (size_t i = 0; i < args.size(); i++) {
+        printer << args[i] << " : ";
+        printer.printType(args[i].getType());
+        if (i < args.size() - 1)
+            printer << ", ";
+    }
+    printer << ")";
+}
+
+static void print(OpAsmPrinter &printer, llhd::EntityOp op) {
+    std::vector<BlockArgument> ins, outs;
+    int64_t n_ins = op.insAttr().getInt();
+    for (int64_t i = 0; i < op.body().front().getArguments().size(); ++i) {
+        // no furter verification for the attribute type is required, already
+        // handled by verify.
+        if (i < n_ins) {
+            outs.push_back(op.body().front().getArguments()[i]);
+        } else {
+            ins.push_back(op.body().front().getArguments()[i]);
+        }
+    }
+    auto entityName =
+        op.getAttrOfType<StringAttr>(SymbolTable::getSymbolAttrName())
+            .getValue();
+    printer << op.getOperationName() << " ";
+    printer.printSymbolName(entityName);
+    printer << " ";
+    printArgumentList(printer, ins);
+    printer << " -> ";
+    printArgumentList(printer, outs);
+    printer.printRegion(op.body(), false, false);
+}
 
 static LogicalResult verify(llhd::EntityOp op) {
     Block &body = op.body().front();
-    ArrayAttr isOutput = op.isOutput();
-
-    // check only boolean attributes are passed in isOutput
-    for (auto i : isOutput) {
-        if (!i.isa<BoolAttr>()) {
-            op.emitError("Expected BoolAttr, got ") << i.getType();
-        }
-    }
-
+    int64_t nIns = op.insAttr().getInt();
     // check that there is exactly one flag for each argument
-    if (body.getArguments().size() != isOutput.size()) {
+    if (body.getArguments().size() < nIns) {
         op.emitError(
-            "There must be one entry in the isOutput attribute for each "
-            "argument of the entity, got: ")
-            << op.isOutput().size()
-            << " but expected: " << body.getArguments().size();
+            "Cannot have more inputs than arguments, expected at most ")
+            << body.getArguments().size() << " but got: " << nIns;
         return failure();
     }
     return success();

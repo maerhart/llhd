@@ -88,14 +88,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
 }
 
-def LLHD_EntityOp : LLHD_Op<"entity", [Symbol]> {
-    let summary = "Define an LLHD entity.";
-    // TODO: add description
-    let arguments = (ins ArrayAttr:$isOutput);
-    let regions = (region SizedRegion<1>:$body);
-}
-
-def LLHD_Terminator : LLHD_Op<"terminator", [Terminator]> {
+def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
     let summary = "Dummy terminator";
     // TODO: add description
     let parser = ?;
@@ -409,5 +402,13 @@ def LLHD_UMulOp : LLHD_Op<"umul", [NoSideEffect, Commutative, SameOperandsAndRes
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
+
+def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
+    let summary = "Define an LLHD entity.";
+    // TODO: add description
+    let arguments = (ins I64Attr:$ins);
+    let regions = (region SizedRegion<1>:$body);
+}
+
 
 #endif // LLHD_OPS
