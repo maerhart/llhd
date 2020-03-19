@@ -68,8 +68,7 @@ static LogicalResult verify(llhd::ConstOp op) { return success(); }
 static ParseResult parseSigOp(OpAsmParser &parser, OperationState &result) {
     OpAsmParser::OperandType operand;
     Type sigType;
-    if (parser.parseOperand(operand) || parser.parseColon() ||
-        parser.parseType(sigType) ||
+    if (parser.parseOperand(operand) || parser.parseColonType(sigType) ||
         parser.parseOptionalAttrDict(result.attributes))
         return failure();
 
@@ -100,8 +99,7 @@ static LogicalResult verify(llhd::SigOp op) { return success(); }
 static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
     llhd::SigType sigType;
     OpAsmParser::OperandType operand;
-    if (parser.parseOperand(operand) || parser.parseColon() ||
-        parser.parseType(sigType))
+    if (parser.parseOperand(operand) || parser.parseColonType(sigType))
         return failure();
     if (parser.resolveOperand(operand, sigType, result.operands))
         return failure();
@@ -145,7 +143,53 @@ static void print(OpAsmPrinter &printer, llhd::DrvOp op) {
     printer.printType(op.signal().getType());
 }
 
-static LogicalResult verify(llhd::DrvOp op) { return success(); }
+static LogicalResult verify(llhd::DrvOp op) {
+    Type opType = op.value().getType();
+    llhd::SigType sigType = op.signal().getType().dyn_cast<llhd::SigType>();
+
+    if (!sigType) {
+        op.emitError("Expected signal type, got ") << op.signal().getType();
+        return failure();
+    }
+    if (opType != sigType.getUnderlyingType()) {
+        op.emitError("The operand to drive has to be the same type as the "
+                     "signal's underlying type, got ")
+            << opType;
+    }
+
+    success();
+}
+
+// Entity Op
+
+static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
+    return success();
+}
+
+static void print(OpAsmPrinter &printer, llhd::EntityOp op) {}
+
+static LogicalResult verify(llhd::EntityOp op) {
+    Block &body = op.body().front();
+    ArrayAttr isOutput = op.isOutput();
+
+    // check only boolean attributes are passed in isOutput
+    for (auto i : isOutput) {
+        if (!i.isa<BoolAttr>()) {
+            op.emitError("Expected BoolAttr, got ") << i.getType();
+        }
+    }
+
+    // check that there is exactly one flag for each argument
+    if (body.getArguments().size() != isOutput.size()) {
+        op.emitError(
+            "There must be one entry in the isOutput attribute for each "
+            "argument of the entity, got: ")
+            << op.isOutput().size()
+            << " but expected: " << body.getArguments().size();
+        return failure();
+    }
+    return success();
+}
 
 namespace mlir {
 namespace llhd {

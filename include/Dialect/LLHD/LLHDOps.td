@@ -11,9 +11,9 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     let description = [{
         The const instruction is used to introduce a constant value into the IR. The first version constructs a constant integer value, the second a constant integer signal, and the third a constant time value.
         ```
-        %result = const iN <int>
-        %result = const iN$ <int>
-        %result = const time <time>
+        %result = llhd.const <int> : iN
+        %result = llhd.const <int> : !llhd.sig<iN>
+        %result = llhd.const <time> : time
         ```
         `int` is an integer literal such as `0b0101`, `0o1247`, `129`, or `0x14F3E`
         time is a time literal such as `1s`, `1s 2d`, or `1s 2d 3e`, where the real component may carry an SI prefix such as `as`, `fs`, `ps`, `ns`, `us`, `ms`.
@@ -32,11 +32,12 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 }
 
 def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
-    let summary = "Create a signal";
+    let summary = "Create a signal.";
 
+    // TODO: udpate description
     let description = [{
         ```
-        %result = sig T %init
+        %result = llhd.sig %init : T
         ```
 
         The `sig` instruction creates a signal in an entity with the initial value `%init` and returns that signal.
@@ -51,7 +52,9 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 }
 
 def LLHD_PrbOp : LLHD_Op<"prb", []> {
-    let summary = "Probe a signal";
+    let summary = "Probe a signal.";
+
+    // TODO: update description
     let description = [{
         ```
         %result = prb T$ %sig
@@ -68,7 +71,9 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
 }
 
 def LLHD_DrvOp : LLHD_Op<"drv"> {
-    let summary = "Drive a value into a signal";
+    let summary = "Drive a value into a signal.";
+
+    // TODO: update description
     let description = [{
         ```
         drv T$ %sig, %value
@@ -81,6 +86,21 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
     }];
 
 let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
+}
+
+def LLHD_EntityOp : LLHD_Op<"entity", [Symbol]> {
+    let summary = "Define an LLHD entity.";
+    // TODO: add description
+    let arguments = (ins ArrayAttr:$isOutput);
+    let regions = (region SizedRegion<1>:$body);
+}
+
+def LLHD_Terminator : LLHD_Op<"terminator", [Terminator]> {
+    let summary = "Dummy terminator";
+    // TODO: add description
+    let parser = ?;
+    let printer = ?;
+    let verifier = ?;
 }
 
 #endif // LLHD_OPS

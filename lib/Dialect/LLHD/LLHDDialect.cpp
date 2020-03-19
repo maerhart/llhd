@@ -1,9 +1,5 @@
 #include "Dialect/LLHD/LLHDDialect.h"
-#include <algorithm>
 #include "Dialect/LLHD/LLHDOps.h"
-#include "llvm/ADT/None.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -11,6 +7,10 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Support/STLExtras.h"
+#include "llvm/ADT/None.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/ErrorHandling.h"
+#include <algorithm>
 // #include <bits/stdint-intn.h>
 #include <cstddef>
 #include <string>
@@ -33,11 +33,12 @@ LLHDDialect::LLHDDialect(mlir::MLIRContext *context)
 
 Type LLHDDialect::parseType(DialectAsmParser &parser) const {
     Type underlyignType;
-    if (parser.parseKeyword("sig") || parser.parseLess()) Type();
+    if (parser.parseKeyword("sig") || parser.parseLess())
+        Type();
     llvm::SMLoc currLoc = parser.getCurrentLocation();
     if (parser.parseType(underlyignType)) {
         parser.emitError(currLoc,
-                         "No signal type found. Signal needs an undelying "
+                         "No signal type found. Signal needs an underlying "
                          "type.");
         return nullptr;
     }
@@ -45,7 +46,8 @@ Type LLHDDialect::parseType(DialectAsmParser &parser) const {
         parser.emitError(currLoc, "Illegal signal type: ") << underlyignType;
         return Type();
     }
-    if (parser.parseGreater()) return Type();
+    if (parser.parseGreater())
+        return Type();
     return SigType::get(underlyignType);
 }
 
@@ -63,7 +65,7 @@ void LLHDDialect::printType(Type type, DialectAsmPrinter &printer) const {
 namespace mlir {
 namespace llhd {
 namespace detail {
-// Sig Type
+// Sig Type Storage
 
 /// Storage struct implementation for LLHD's sig type. The sig type only
 /// contains one underlying llhd type.
@@ -88,18 +90,20 @@ struct SigTypeStorage : public mlir::TypeStorage {
     /// storage
     static SigTypeStorage *construct(mlir::TypeStorageAllocator &allocator,
                                      const KeyTy &key) {
-        return new (allocator.allocate<SigTypeStorage>()) SigTypeStorage{key};
+        return new (allocator.allocate<SigTypeStorage>()) SigTypeStorage(key);
     }
 
     /// get the underlying type
     mlir::Type getUnderlyingType() const { return underlyingType; }
 
-   private:
+  private:
     mlir::Type underlyingType;
 };
 }    // namespace detail
 }    // namespace llhd
 }    // namespace mlir
+
+// Sig Type
 
 SigType SigType::get(mlir::Type underlyingType) {
     return Base::get(underlyingType.getContext(), LLHDTypes::Sig,
@@ -112,7 +116,8 @@ SigType SigType::getChecked(mlir::Type underlyingType, Location location) {
 LogicalResult SigType::VerifyConstructionInvariants(Location loc,
                                                     Type underlyingType) {
     // check whether the given type is legal
-    if (!underlyingType.isa<IntegerType>()) return failure();
+    if (!underlyingType.isa<IntegerType>())
+        return failure();
     return success();
 }
 
