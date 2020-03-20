@@ -279,7 +279,7 @@ static LogicalResult verify(llhd::ShlOp op) {
 
 static LogicalResult verify(llhd::ShrOp op) { 
     if (op.base().getType() != op.result().getType()) {
-        op.emitError("The output of the Shl operation is required to have the "
+        op.emitError("The output of the Shr operation is required to have the "
             "same type as the base value (first operand), (") 
             << op.base().getType() << " vs. " << op.result().getType() << ")";
         return failure();
@@ -296,6 +296,12 @@ static LogicalResult verify(llhd::AddOp op) { return success(); }
 static LogicalResult verify(llhd::SubOp op) { return success(); }
 static LogicalResult verify(llhd::SMulOp op) { return success(); }
 static LogicalResult verify(llhd::UMulOp op) { return success(); }
+static LogicalResult verify(llhd::SDivOp op) { return success(); }
+static LogicalResult verify(llhd::UDivOp op) { return success(); }
+static LogicalResult verify(llhd::SModOp op) { return success(); }
+static LogicalResult verify(llhd::UModOp op) { return success(); }
+static LogicalResult verify(llhd::SRemOp op) { return success(); }
+static LogicalResult verify(llhd::URemOp op) { return success(); }
 
 
 namespace mlir {
