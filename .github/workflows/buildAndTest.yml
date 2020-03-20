@@ -14,10 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: configure
-      run: git clone https://github.com/llvm/llvm-project.git .. && \
-           mkdir ../llvm-project/build && mkdir ../install && cd ../llvm-project/build \
+      run: cd .. && git clone https://github.com/llvm/llvm-project.git && cd llvm-project && git checkout 13be27482e5300ac8d7cafacd8a046a6611ad1c4 && \
+           mkdir build && mkdir ../install && cd build && \
            cmake -G Ninja ../llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=../../install -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON && \
-           cmake --build . --target install
+           cmake --build . --target install && \
            mkdir ../../llhd/build && cd build && \
            cmake -G Ninja .. -DLLVM_DIR=../../install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=../../llvm-project/build/bin/llvm-lit
     - name: build
