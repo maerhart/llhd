@@ -219,37 +219,6 @@ static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
 
     parseEntitySignature(parser, result, args, argTypes);
 
-    // TODO : move signature parsing logic in helper functions (two, one for
-    // argument list + bool for ins, second for parsing the two lists with
-    // separing arrow. pass attribute ref to second)
-    // do {
-    //     OpAsmParser::OperandType argument;
-    //     Type argType;
-    //     if (succeeded(parser.parseOptionalRegionArgument(argument)) &&
-    //         !argument.name.empty())
-    //         inArgs.push_back(argument);
-    //     if (!argument.name.empty() && (parser.parseColonType(argType))) {
-    //         inTypes.push_back(argType);
-    //         ++nIns;
-    //     }
-    // } while (succeeded(parser.parseOptionalComma()));
-    // if (parser.parseRParen() || parser.parseArrow() || parser.parseLParen())
-    //     return failure();
-    // do {
-    //     OpAsmParser::OperandType argument;
-    //     Type argType;
-    //     if (succeeded(parser.parseOptionalRegionArgument(argument)) &&
-    //         !argument.name.empty())
-    //         inArgs.push_back(argument);
-    //     if (!argument.name.empty() &&
-    //     succeeded(parser.parseColonType(argType)))
-    //         inTypes.push_back(argType);
-    // } while (succeeded(parser.parseOptionalComma()));
-    // if (parser.parseRParen())
-    //     return failure();
-    // IntegerAttr insAttr =
-    //     IntegerAttr::get(IntegerType::get(64, result.getContext()), nIns);
-    // result.addAttribute("ins", insAttr);
     auto *body = result.addRegion();
     parser.parseOptionalRegion(*body, args, argTypes);
     llhd::EntityOp::ensureTerminator(*body, parser.getBuilder(),
@@ -312,30 +281,30 @@ static LogicalResult verify(llhd::AndOp op) { return success(); }
 static LogicalResult verify(llhd::OrOp op) { return success(); }
 static LogicalResult verify(llhd::XorOp op) { return success(); }
 
-static LogicalResult verify(llhd::ShlOp op) { 
+static LogicalResult verify(llhd::ShlOp op) {
     if (op.base().getType() != op.result().getType()) {
         op.emitError("The output of the Shl operation is required to have the "
-            "same type as the base value (first operand), (") 
+                     "same type as the base value (first operand), (")
             << op.base().getType() << " vs. " << op.result().getType() << ")";
         return failure();
     }
 
     // TODO: verify that T and Th only differ in the number of bits or elements
 
-    return success(); 
+    return success();
 }
 
-static LogicalResult verify(llhd::ShrOp op) { 
+static LogicalResult verify(llhd::ShrOp op) {
     if (op.base().getType() != op.result().getType()) {
         op.emitError("The output of the Shl operation is required to have the "
-            "same type as the base value (first operand), (") 
+                     "same type as the base value (first operand), (")
             << op.base().getType() << " vs. " << op.result().getType() << ")";
         return failure();
     }
 
     // TODO: verify that T and Th only differ in the number of bits or elements
 
-    return success(); 
+    return success();
 }
 
 // Arithmetic Operations
@@ -344,7 +313,6 @@ static LogicalResult verify(llhd::AddOp op) { return success(); }
 static LogicalResult verify(llhd::SubOp op) { return success(); }
 static LogicalResult verify(llhd::SMulOp op) { return success(); }
 static LogicalResult verify(llhd::UMulOp op) { return success(); }
-
 
 namespace mlir {
 namespace llhd {
