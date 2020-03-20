@@ -34,34 +34,6 @@ using namespace mlir;
 // LLHD Operations
 //===---------------------------------------------------------------------===//
 
-// ConstOp
-
-/// Parse an LLHD const operation with following syntax:
-/// op ::= llhd.const literal : type
-// static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result)
-// {
-//     IntegerAttr value;
-//     Type type;
-//     if (parser.parseAttribute(value, parser.getBuilder().getIntegerType(64),
-//                               "value", result.attributes) ||
-//         parser.parseColonType(type))
-//         return failure();
-
-//     // auto res = type.dyn_cast<IntegerType>();
-//     // if (!res) return failure();
-//     result.addTypes(type);
-//     return success();
-// }
-
-// /// print an LLHD const operation
-// static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
-//     printer << op.getOperationName() << " ";
-//     printer << op.value() << " : ";
-//     printer.printType(op.getType());
-// }
-
-static LogicalResult verify(llhd::ConstOp op) { return success(); }
-
 // Sig Op
 
 /// Parse an LLHD sig operation with the following syntax:
@@ -275,12 +247,7 @@ static LogicalResult verify(llhd::EntityOp op) {
     return success();
 }
 
-// Bitwise Operations
-static LogicalResult verify(llhd::NotOp op) { return success(); }
-static LogicalResult verify(llhd::AndOp op) { return success(); }
-static LogicalResult verify(llhd::OrOp op) { return success(); }
-static LogicalResult verify(llhd::XorOp op) { return success(); }
-
+// Shift Operations
 static LogicalResult verify(llhd::ShlOp op) {
     if (op.base().getType() != op.result().getType()) {
         op.emitError("The output of the Shl operation is required to have the "
@@ -307,18 +274,6 @@ static LogicalResult verify(llhd::ShrOp op) {
     return success();
 }
 
-// Arithmetic Operations
-static LogicalResult verify(llhd::NegOp op) { return success(); }
-static LogicalResult verify(llhd::AddOp op) { return success(); }
-static LogicalResult verify(llhd::SubOp op) { return success(); }
-static LogicalResult verify(llhd::SMulOp op) { return success(); }
-static LogicalResult verify(llhd::UMulOp op) { return success(); }
-static LogicalResult verify(llhd::SDivOp op) { return success(); }
-static LogicalResult verify(llhd::UDivOp op) { return success(); }
-static LogicalResult verify(llhd::SModOp op) { return success(); }
-static LogicalResult verify(llhd::UModOp op) { return success(); }
-static LogicalResult verify(llhd::SRemOp op) { return success(); }
-static LogicalResult verify(llhd::URemOp op) { return success(); }
 
 namespace mlir {
 namespace llhd {

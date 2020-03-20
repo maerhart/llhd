@@ -56,7 +56,6 @@ class LLHD_Op<string mnemonic, list<OpTrait> traits = []> :
     // * static LogicalResult verify(<op-c++-class-name> op)
     let parser = [{ return ::parse$cppClass(parser, result); }];
     let printer = [{ ::print(p, *this); }];
-    let verifier = [{ return ::verify(*this); }];
 }
 
 

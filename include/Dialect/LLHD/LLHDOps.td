@@ -20,7 +20,6 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     }];
 
     let arguments = (ins I64Attr:$value);
-    
     let results = (outs LLHD_Type:$out);
 
     let assemblyFormat = "$value attr-dict `:` type($out)";
@@ -49,6 +48,8 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 
     let arguments = (ins LLHD_ElementType:$init);
     let results = (outs LLHD_SigType);
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_PrbOp : LLHD_Op<"prb", []> {
@@ -68,6 +69,8 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
 
     let arguments = (ins LLHD_SigType:$signal);
     let results = (outs LLHD_ElementType:$output);
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_DrvOp : LLHD_Op<"drv"> {
@@ -85,7 +88,9 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
         * `%value` must be of type `T`.
     }];
 
-let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
+    let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
@@ -93,8 +98,8 @@ def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
     // TODO: add description
     let parser = ?;
     let printer = ?;
-    let verifier = ?;
 }
+
 
 //===----------------------------------------------------------------------===//
 //=== Bitwise Operations
@@ -276,6 +281,8 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
@@ -311,6 +318,8 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 
