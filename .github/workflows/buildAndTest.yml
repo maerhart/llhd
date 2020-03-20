@@ -1,0 +1,26 @@
+name: Build and Test the LLHD Project
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: git clone https://github.com/llvm/llvm-project.git .. && \
+           mkdir ../llvm-project/build && mkdir ../install && cd ../llvm-project/build \
+           cmake -G Ninja ../llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=../../install -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON && \
+           cmake --build . --target install
+           mkdir ../../llhd/build && cd build && \
+           cmake -G Ninja .. -DLLVM_DIR=../../install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=../../llvm-project/build/bin/llvm-lit
+    - name: build
+      run: cmake --build build --target llhdc
+    - name: test
+      run: cmake --build build --target check-llhdc
