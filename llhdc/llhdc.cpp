@@ -97,4 +97,3 @@ int main(int argc, char **argv) {
   return failed(MlirOptMain(output->os(), std::move(file), passPipeline,
                             splitInputFile, verifyDiagnostics, verifyPasses));
 }
-
