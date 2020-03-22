@@ -1,26 +1,40 @@
-name: Build and Test the LLHD Project
+name: Build and Test
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-    
+    name: Build and Test
+    runs-on: ubuntu-latest  
     steps:
-    - uses: actions/checkout@v2
-    - name: configure
-      run: cd .. && git clone https://github.com/llvm/llvm-project.git && cd llvm-project && git checkout 13be27482e5300ac8d7cafacd8a046a6611ad1c4 && \
-           mkdir build && mkdir ../install && cd build && \
-           cmake -G Ninja ../llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=../../install -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON && \
-           cmake --build . --target install && \
-           mkdir ../../llhd/build && cd build && \
-           cmake -G Ninja .. -DLLVM_DIR=../../install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=../../llvm-project/build/bin/llvm-lit
-    - name: build
-      run: cmake --build build --target llhdc
-    - name: test
-      run: cmake --build build --target check-llhdc
+    - name: Install Dependencies
+      run: sudo apt-get install ninja-build
+    - name: Configure Environment
+      run: echo "::add-path::$GITHUB_WORKSPACE/llvm/install/bin"
+    - name: Get LLHD
+      uses: actions/checkout@v2
+      with:
+        path: 'llhd'
+    - name: Cache LLVM
+      id: cache-llvm
+      uses: actions/cache@v1
+      with:
+        path: llvm
+        key: ${{ runner.os }}-llvm-install
+    - name: Get LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      uses: actions/checkout@v2
+      with:
+        repository: 'llvm/llvm-project'
+        ref: '13be27482e5300ac8d7cafacd8a046a6611ad1c4'
+        path: 'llvm'
+    - name: Apply patches to LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      run: cd llvm && git apply $GITHUB_WORKSPACE/llhd/patches/out_of_tree.patch
+    - name: Install LLVM
+      if: steps.cache-llvm.outputs.cache-hit != 'true'
+      run: mkdir llvm/build && mkdir llvm/install && cd llvm/build && cmake -G Ninja $GITHUB_WORKSPACE/llvm/llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/llvm/install -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON -DCMAKE_LINKER=/usr/bin/lld -DLLVM_PARALLEL_LINK_JOBS=2 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON && cmake --build . --target install
+    - name: Configure cmake
+      run: mkdir llhd/build && cd llhd/build && cmake -G Ninja $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
+    - name: Build and Test LLHD
+      run: cd llhd/build && cmake --build . --target check-llhdc

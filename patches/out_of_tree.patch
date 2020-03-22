@@ -1,0 +1,12 @@
+diff --git a/mlir/include/mlir/IR/DialectSymbolRegistry.def b/mlir/include/mlir/IR/DialectSymbolRegistry.def
+index d082e1602..830bbbf68 100644
+--- a/mlir/include/mlir/IR/DialectSymbolRegistry.def
++++ b/mlir/include/mlir/IR/DialectSymbolRegistry.def
+@@ -25,6 +25,7 @@ DEFINE_SYM_KIND_RANGE(TOY) // Toy language (tutorial) Dialect
+ DEFINE_SYM_KIND_RANGE(SPIRV) // SPIR-V dialect
+ DEFINE_SYM_KIND_RANGE(XLA_HLO) // XLA HLO dialect
+ DEFINE_SYM_KIND_RANGE(SHAPE) // Shape dialect
++DEFINE_SYM_KIND_RANGE(LLHD) // LLHD dialect
+ 
+ // The following ranges are reserved for experimenting with MLIR dialects in a
+ // private context without having to register them here.

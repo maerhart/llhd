@@ -1,15 +1,17 @@
 # LLHD
 
+![](https://github.com/maerhart/llhd/workflows/Build%20and%20Test/badge.svg?event=push)
+
 Development repository for the LLHD Dialect. The repository depends on a build of llvm including mlir. Before building mlir register your custom dialects in include/mlir/IR/DialectSymbolRegistry.def and change the main cmake file to install the td and def files. Once the llvm and mlir are built setup configure the project using the following commands.
 
 ```
 mkdir build && cd build
 cmake -G Ninja .. -DCMAKE_LINKER=<path_to_lld> -DLLVM_DIR=<install_root>/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=<build_root>/bin/llvm-lit
-cmake --build . --target llhdc-opt
+cmake --build . --target llhdc
 cmake --build . --target check-llhdc
 ```
 
-In case an error occurs stating that `llvm_expand_pseudo_components` (or some other llvm related cmake command) is not found, make sure that cmake uses the `LLVMConfig.cmake` file built and installed previously (and not the one of another installation, e.g. in /usr/...)
+In case an error occurs stating that `llvm_expand_pseudo_components` (or some other llvm related cmake command) is not found, make sure that cmake uses the `LLVMConfig.cmake` file built and installed previously (not the one of another installation, e.g. `/usr/...`)
 
 # mlir main repo patches
 
@@ -18,20 +20,10 @@ In DialectSymbolRegistry.def:
 ```
  DEFINE_SYM_KIND_RANGE(SPIRV) // SPIR-V dialect
  DEFINE_SYM_KIND_RANGE(XLA_HLO) // XLA HLO dialect
- 
-+DEFINE_SYM_KIND_RANGE(LLHD)
++DEFINE_SYM_KIND_RANGE(LLHD) // LLHD dialect
 ```
 
-In the main CMakeLists.txt:
-``` 
-     FILES_MATCHING
-     PATTERN "*.h"
-     PATTERN "*.inc"
-+    PATTERN "*.td"
-+    PATTERN "*.def"
-     PATTERN "LICENSE.TXT"
-     )
-```
+More information in the `patches/out_of_tree.patch` file.
 
 # llvm build instructions
 
