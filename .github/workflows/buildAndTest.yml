@@ -3,6 +3,19 @@ name: Build and Test
 on: [push, pull_request]
 
 jobs:
+  lint:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get LLHD
+      uses: actions/checkout@v2
+    - name: clang-format
+      uses: DoozyX/clang-format-lint-action@v0.5
+      with:
+        source: '.'
+        extensions: 'h,cpp'
+        clangFormatVersion: 9
+
   build:
     name: Build and Test
     runs-on: ubuntu-latest  
