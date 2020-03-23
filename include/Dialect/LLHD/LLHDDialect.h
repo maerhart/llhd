@@ -8,6 +8,7 @@ namespace mlir {
 namespace llhd {
 namespace detail {
 struct SigTypeStorage;
+struct TimeTypeStorage;
 } // namespace detail
 
 class LLHDDialect : public Dialect {
@@ -30,6 +31,7 @@ public:
 namespace LLHDTypes {
 enum Kinds {
   Sig = mlir::Type::FIRST_LLHD_TYPE,
+  Time,
 };
 } // namespace LLHDTypes
 
@@ -48,6 +50,24 @@ public:
                                                     Type underlyingType);
   /// The underlying type of the sig type
   Type getUnderlyingType();
+};
+
+class TimeType
+    : public Type::TypeBase<TimeType, Type, detail::TimeTypeStorage> {
+public:
+  using Base::Base;
+
+  static bool kindof(unsigned kind) { return kind == LLHDTypes::Time; }
+
+  static TimeType get(Type timeType, llvm::ArrayRef<unsigned> additionalAttr);
+
+  static LogicalResult
+  VerifyConstructionInvariants(Location loc, Type timeType,
+                               llvm::ArrayRef<unsigned> additionalAttr);
+
+  Type getTimeType();
+  unsigned getDelta();
+  unsigned getEps();
 };
 } // namespace llhd
 } // namespace mlir
