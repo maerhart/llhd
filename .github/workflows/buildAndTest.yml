@@ -51,3 +51,5 @@ jobs:
       run: mkdir llhd/build && cd llhd/build && cmake -G Ninja $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
     - name: Build and Test LLHD
       run: cd llhd/build && cmake --build . --target check-llhdc
+    - name: Generate LLHD Docs
+      run: cd llhd/build && cmake --build . --target llhd-doc
