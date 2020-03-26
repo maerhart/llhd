@@ -63,8 +63,6 @@ static void print(OpAsmPrinter &printer, llhd::SigOp op) {
   printer.printType(opType.getUnderlyingType());
 }
 
-static LogicalResult verify(llhd::SigOp op) { return success(); }
-
 // Prb Op
 
 /// Parse an LLHD prb operation with the following syntax:
@@ -131,6 +129,77 @@ static LogicalResult verify(llhd::DrvOp op) {
   }
 
   return success();
+}
+
+// Wait Terminator
+static ParseResult parseWaitOp(OpAsmParser &parser, OperationState &result) {
+  SmallVector<OpAsmParser::OperandType, 4> obsOperands;
+  llvm::SMLoc obsOperandsLoc = parser.getCurrentLocation();
+  (void)obsOperandsLoc;
+  SmallVector<OpAsmParser::OperandType, 4> destOpsOperands;
+  llvm::SMLoc destOpsOperandsLoc = parser.getCurrentLocation();
+  (void)destOpsOperandsLoc;
+  SmallVector<Type, 1> destOpsTypes;
+  SmallVector<Type, 1> obsTypes;
+
+  if (parser.parseOperandList(obsOperands))
+    return failure();
+  if (parser.parseLSquare())
+    return failure();
+
+  Block *destSuccessor = nullptr;
+  if (parser.parseSuccessor(destSuccessor))
+    return failure();
+  if (succeeded(parser.parseOptionalLParen())) {
+
+  if (parser.parseOperandList(destOpsOperands))
+    return failure();
+  if (parser.parseColon())
+    return failure();
+
+  if (parser.parseTypeList(destOpsTypes))
+    return failure();
+  if (parser.parseRParen())
+    return failure();
+  }
+  if (parser.parseRSquare())
+    return failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return failure();
+  if (parser.parseColon())
+    return failure();
+
+  if (parser.parseTypeList(obsTypes))
+    return failure();
+  if (parser.resolveOperands(obsOperands, obsTypes, obsOperandsLoc, result.operands))
+    return failure();
+  if (parser.resolveOperands(destOpsOperands, destOpsTypes, destOpsOperandsLoc, result.operands))
+    return failure();
+  result.addSuccessors(destSuccessor);
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(obsOperands.size()), static_cast<int32_t>(destOpsOperands.size())}));
+  return success();
+}
+
+static void print(OpAsmPrinter &p, llhd::WaitOp op) {
+  p << "llhd.wait";
+  p << " ";
+  p << op.obs();
+  p << " ";
+  p << "[";
+  p << op.dest();
+  if (!op.destOps().empty()) {
+  p << "(";
+  p << op.destOps();
+  p << " " << ":";
+  p << " ";
+  p << op.destOps().getTypes();
+  p << ")";
+  }
+  p << "]";
+  p.printOptionalAttrDict(op.getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", });
+  p << " " << ":";
+  p << " ";
+  p << op.obs().getTypes();
 }
 
 // Entity Op
@@ -241,6 +310,168 @@ static LogicalResult verify(llhd::EntityOp op) {
     return failure();
   }
   return success();
+}
+
+// Proc Operation
+LogicalResult mlir::llhd::ProcOp::verifyType() {
+  // Fail if function returns more than zero values. This is because the outputs
+  // of a process are specially marked arguments.
+  if (this->getNumResults() > 0) {
+    this->emitOpError(
+        "process has more than zero return types, this is not allowed");
+    return failure();
+  }
+  // Check that all operands are of signal type
+  for (int i = 0, n = this->getNumFuncArguments(); i < n; i++) {
+    if (!llhd::SigType::kindof(this->getArgument(i).getType().getKind())) {
+      this->emitOpError("usage of invalid argument type, was ")
+          << this->getArgument(i).getType() << ", expected LLHD signal type";
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult mlir::llhd::ProcOp::verifyBody() {
+  // Body must not be empty, this indicates an external process. We use another
+  // instruction to reference external processes.
+  if (this->isExternal()) {
+    this->emitOpError("defining external processes with the proc instruction "
+                      "is not allowed, use the intended instruction instead.");
+    return failure();
+  }
+  return success();
+}
+
+static LogicalResult verify(llhd::ProcOp op) {
+  // Check that the ins attribute is smaller or equal the number of
+  // arguments
+  uint64_t numArgs = op.getNumArguments();
+  uint64_t numIns = op.insAttr().getInt();
+  if (numArgs < numIns) {
+    op.emitOpError("Cannot have more inputs than arguments, expected at most ")
+        << numArgs << ", got " << numIns;
+    return failure();
+  }
+  return success();
+}
+
+static ParseResult
+parseProcArgumentList(OpAsmParser &parser, SmallVectorImpl<Type> &argTypes,
+                      SmallVectorImpl<OpAsmParser::OperandType> &argNames) {
+  if (parser.parseLParen())
+    return failure();
+
+  // The argument list either has to consistently have ssa-id's followed by
+  // types, or just be a type list.  It isn't ok to sometimes have SSA ID's and
+  // sometimes not.
+  auto parseArgument = [&]() -> ParseResult {
+    llvm::SMLoc loc = parser.getCurrentLocation();
+
+    // Parse argument name if present.
+    OpAsmParser::OperandType argument;
+    Type argumentType;
+    if (succeeded(parser.parseOptionalRegionArgument(argument)) &&
+        !argument.name.empty()) {
+      // Reject this if the preceding argument was missing a name.
+      if (argNames.empty() && !argTypes.empty())
+        return parser.emitError(loc, "expected type instead of SSA identifier");
+      argNames.push_back(argument);
+
+      if (parser.parseColonType(argumentType))
+        return failure();
+    } else if (!argNames.empty()) {
+      // Reject this if the preceding argument had a name.
+      return parser.emitError(loc, "expected SSA identifier");
+    } else if (parser.parseType(argumentType)) {
+      return failure();
+    }
+
+    // Add the argument type.
+    argTypes.push_back(argumentType);
+
+    return success();
+  };
+
+  // Parse the function arguments.
+  if (failed(parser.parseOptionalRParen())) {
+    do {
+      unsigned numTypedArguments = argTypes.size();
+      if (parseArgument())
+        return failure();
+
+      llvm::SMLoc loc = parser.getCurrentLocation();
+      if (argTypes.size() == numTypedArguments &&
+          succeeded(parser.parseOptionalComma()))
+        return parser.emitError(loc, "variadic arguments are not allowed");
+    } while (succeeded(parser.parseOptionalComma()));
+    parser.parseRParen();
+  }
+
+  return success();
+}
+
+static ParseResult parseProcOp(OpAsmParser &parser, OperationState &result) {
+  StringAttr procName;
+  SmallVector<OpAsmParser::OperandType, 8> argNames;
+  SmallVector<Type, 8> argTypes;
+  Builder &builder = parser.getBuilder();
+
+  if (parser.parseSymbolName(procName, SymbolTable::getSymbolAttrName(),
+                             result.attributes))
+    return failure();
+
+  if (parseProcArgumentList(parser, argTypes, argNames))
+    return failure();
+
+  result.addAttribute("ins", builder.getI64IntegerAttr(argTypes.size()));
+  parser.parseArrow();
+
+  if (parseProcArgumentList(parser, argTypes, argNames))
+    return failure();
+
+  auto type = builder.getFunctionType(argTypes, llvm::None);
+  result.addAttribute(mlir::llhd::ProcOp::getTypeAttrName(),
+                      TypeAttr::get(type));
+
+  auto *body = result.addRegion();
+  parser.parseRegion(*body, argNames, argNames.empty() ? ArrayRef<Type>() : argTypes);
+
+  return success();
+}
+
+/// Print the signature of the `proc` unit. Assumes that it passed the
+/// verification.
+static void printProcArguments(OpAsmPrinter &p, Operation *op,
+                               ArrayRef<Type> types, uint64_t numIns) {
+  Region &body = op->getRegion(0);
+  auto printList = [&](unsigned i, unsigned max) -> void {
+    for (; i < max; ++i) {
+      p.printOperand(body.front().getArgument(i));
+      p << " : ";
+
+      p.printType(types[i]);
+      p.printOptionalAttrDict(::mlir::impl::getArgAttrs(op, i));
+
+      if (i < max - 1)
+        p << ", ";
+    }
+  };
+
+  p << '(';
+  printList(0, numIns);
+  p << ") -> (";
+  printList(numIns, types.size());
+  p << ')';
+}
+
+static void print(OpAsmPrinter &printer, llhd::ProcOp op) {
+  FunctionType type = op.getType();
+  printer << op.getOperationName() << ' ';
+  printer.printSymbolName(op.getName());
+  printProcArguments(printer, op.getOperation(), type.getInputs(),
+                     op.insAttr().getInt());
+  printer.printRegion(op.body(), false, true);
 }
 
 // Shift Operations

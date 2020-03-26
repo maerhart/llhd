@@ -30,6 +30,10 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     ];
 }
 
+//===----------------------------------------------------------------------===//
+//=== Signal Operations
+//===----------------------------------------------------------------------===//
+
 def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
     let summary = "Create a signal.";
 
@@ -48,8 +52,6 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 
     let arguments = (ins LLHD_ElementType:$init);
     let results = (outs LLHD_SigType);
-
-    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_PrbOp : LLHD_Op<"prb", []> {
@@ -93,6 +95,10 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
     let verifier = [{ return ::verify(*this); }];
 }
 
+//===----------------------------------------------------------------------===//
+//=== Control Flow Operations
+//===----------------------------------------------------------------------===//
+
 def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
     let summary = "Dummy terminator";
     // TODO: add description
@@ -100,6 +106,35 @@ def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
     let printer = ?;
 }
 
+def LLHD_WaitOp : LLHD_Op<"wait", 
+        [Terminator, AttrSizedOperandSegments, HasParent<"ProcOp">]> {
+    let summary = "Suspends execution of a process.";
+    // TODO: improve description
+    let description = [{
+        The `wait` instruction suspends execution of a process until any of the \
+        observed signals change or optionally a fixed time interval has passed.
+    }];
+
+    let arguments = (ins Variadic<LLHD_SigType>:$obs, 
+                         Variadic<LLHD_Type>:$destOps, 
+                         I32ElementsAttr:$operand_segment_sizes);
+    let successors = (successor AnySuccessor:$dest);
+
+//    let assemblyFormat = [{
+//        $obs `,` $dest (`(` $destOps^ `:` type($destOps) `)` `,`)? ($time^ `:` type($time))? attr-dict `:` type($obs)
+//    }];
+}
+
+def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
+    let summary = "Terminates execution of a process.";
+    let description = [{
+        The `halt` instruction terminates execution of a process. All processes \
+        must eventually halt or consist of an infinite loop.
+        * This is a terminator instruction
+    }];
+
+    let assemblyFormat = "attr-dict";
+}
 
 //===----------------------------------------------------------------------===//
 //=== Bitwise Operations
@@ -129,9 +164,9 @@ def LLHD_NotOp : LLHD_Op<"not", [NoSideEffect, SameOperandsAndResultType]> {
     }];
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>:$result);
 
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+    let assemblyFormat = "`(` $value `)` attr-dict `:` type($result)";
 }
 
 def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
@@ -520,9 +555,36 @@ def LLHD_URemOp : LLHD_Op<"urem", [NoSideEffect, SameOperandsAndResultType]> {
 
 def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
     let summary = "Define an LLHD entity.";
-    // TODO: add description
+    // TODO: add descriptioand change the main cmake file to install the td and def filesn
     let arguments = (ins I64Attr:$ins);
     let regions = (region SizedRegion<1>:$body);
+}
+
+def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove]> {
+    let summary = "";
+    // TODO: add description
+    let description = [{
+
+    }];
+
+    let arguments = (ins I64Attr:$ins);
+    let regions = (region AnyRegion:$body);
+
+    let extraClassDeclaration = [{
+        friend class OpTrait::FunctionLike<ProcOp>;
+
+        /// Hooks for the input/output type enumeration in FunctionLike.
+        unsigned getNumFuncArguments() { return getType().getNumInputs(); }
+        unsigned getNumFuncResults() { return getType().getNumResults(); }
+
+        /// Hook for FunctionLike verifier.
+        LogicalResult verifyType();
+
+        /// Verifies the body of the function.
+        LogicalResult verifyBody();
+    }];
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 
