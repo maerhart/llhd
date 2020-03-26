@@ -2,6 +2,8 @@
 
 ![](https://github.com/maerhart/llhd/workflows/Build%20and%20Test/badge.svg?event=push)
 
+- [LLHD Documentation](https://rodonisi.github.io/llhd-docs/)
+
 Development repository for the LLHD Dialect. The repository depends on a build of llvm including mlir. Before building mlir register your custom dialects in include/mlir/IR/DialectSymbolRegistry.def and change the main cmake file to install the td and def files. Once the llvm and mlir are built setup configure the project using the following commands.
 
 ```
