@@ -152,15 +152,15 @@ static ParseResult parseWaitOp(OpAsmParser &parser, OperationState &result) {
     return failure();
   if (succeeded(parser.parseOptionalLParen())) {
 
-  if (parser.parseOperandList(destOpsOperands))
-    return failure();
-  if (parser.parseColon())
-    return failure();
+    if (parser.parseOperandList(destOpsOperands))
+      return failure();
+    if (parser.parseColon())
+      return failure();
 
-  if (parser.parseTypeList(destOpsTypes))
-    return failure();
-  if (parser.parseRParen())
-    return failure();
+    if (parser.parseTypeList(destOpsTypes))
+      return failure();
+    if (parser.parseRParen())
+      return failure();
   }
   if (parser.parseRSquare())
     return failure();
@@ -171,12 +171,17 @@ static ParseResult parseWaitOp(OpAsmParser &parser, OperationState &result) {
 
   if (parser.parseTypeList(obsTypes))
     return failure();
-  if (parser.resolveOperands(obsOperands, obsTypes, obsOperandsLoc, result.operands))
+  if (parser.resolveOperands(obsOperands, obsTypes, obsOperandsLoc,
+                             result.operands))
     return failure();
-  if (parser.resolveOperands(destOpsOperands, destOpsTypes, destOpsOperandsLoc, result.operands))
+  if (parser.resolveOperands(destOpsOperands, destOpsTypes, destOpsOperandsLoc,
+                             result.operands))
     return failure();
   result.addSuccessors(destSuccessor);
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(obsOperands.size()), static_cast<int32_t>(destOpsOperands.size())}));
+  result.addAttribute("operand_segment_sizes",
+                      parser.getBuilder().getI32VectorAttr(
+                          {static_cast<int32_t>(obsOperands.size()),
+                           static_cast<int32_t>(destOpsOperands.size())}));
   return success();
 }
 
@@ -188,16 +193,20 @@ static void print(OpAsmPrinter &p, llhd::WaitOp op) {
   p << "[";
   p << op.dest();
   if (!op.destOps().empty()) {
-  p << "(";
-  p << op.destOps();
-  p << " " << ":";
-  p << " ";
-  p << op.destOps().getTypes();
-  p << ")";
+    p << "(";
+    p << op.destOps();
+    p << " "
+      << ":";
+    p << " ";
+    p << op.destOps().getTypes();
+    p << ")";
   }
   p << "]";
-  p.printOptionalAttrDict(op.getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", });
-  p << " " << ":";
+  p.printOptionalAttrDict(op.getAttrs(), /*elidedAttrs=*/{
+                              "operand_segment_sizes",
+                          });
+  p << " "
+    << ":";
   p << " ";
   p << op.obs().getTypes();
 }
@@ -435,7 +444,8 @@ static ParseResult parseProcOp(OpAsmParser &parser, OperationState &result) {
                       TypeAttr::get(type));
 
   auto *body = result.addRegion();
-  parser.parseRegion(*body, argNames, argNames.empty() ? ArrayRef<Type>() : argTypes);
+  parser.parseRegion(*body, argNames,
+                     argNames.empty() ? ArrayRef<Type>() : argTypes);
 
   return success();
 }
