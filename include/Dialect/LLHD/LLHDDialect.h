@@ -37,7 +37,7 @@ public:
 //===----------------------------------------------------------------------===//
 namespace LLHDTypes {
 enum Kinds {
-  Sig = mlir::Type::FIRST_LLHD_TYPE,
+  Sig = mlir::Type::FIRST_PRIVATE_EXPERIMENTAL_0_TYPE,
   Time,
 };
 } // namespace LLHDTypes
@@ -76,7 +76,7 @@ public:
 
 namespace LLHDAttrs {
 enum Kinds {
-  Time = mlir::Attribute::FIRST_LLHD_ATTR,
+  Time = mlir::Attribute::FIRST_PRIVATE_EXPERIMENTAL_0_ATTR,
 };
 } // namespace LLHDAttrs
 
