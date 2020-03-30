@@ -1,9 +1,7 @@
 #ifndef LLHD_BASE
 #define LLHD_BASE
 
-#ifndef OP_BASE
 include "mlir/IR/OpBase.td"
-#endif // OP_BASE
 
 //===----------------------------------------------------------------------===//
 // LLHD dialect definition
@@ -22,6 +20,7 @@ def LLHD_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 // LLHD type definitions
 //===----------------------------------------------------------------------===//
+
 // LLHD sig type
 def LLHD_SigType : Type<CPred<"$_self.isa<SigType>()">, "LLHD sig type">;
 
@@ -33,11 +32,25 @@ def LLHD_iN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
 //       that the instructions don't have to be updated
 def LLHD_lN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
 
+// LLHD Time Type
+def LLHD_TimeType : Type<CPred<"$_self.isa<TimeType>()">, "LLHD time type">;
+
 // LLHD elementary types
-def LLHD_ElementType : AnyTypeOf<[LLHD_iN]>;
+def LLHD_ElementType : AnyTypeOf<[LLHD_iN, LLHD_TimeType]>;
 
 // LLHD full list of types
-def LLHD_Type : AnyTypeOf<[LLHD_iN, LLHD_SigType]>;
+def LLHD_Type : AnyTypeOf<[LLHD_iN, LLHD_SigType, LLHD_TimeType]>;
+
+//===----------------------------------------------------------------------===//
+// LLDH attribute definitions
+//===----------------------------------------------------------------------===//
+
+// LLHD time attr
+def LLHD_TimeAttr : Attr<CPred<"$_self.isa<TimeAttr>()">, "LLHD time attribute"> {
+    let storageType= [{ TimeAttr }];
+    let returnType = [{ llvm::SmallVector<unsigned, 3> }];
+    let valueType = LLHD_TimeType;
+}
 
 //===----------------------------------------------------------------------===//
 // LLHD op definition

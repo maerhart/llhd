@@ -46,17 +46,21 @@ class SigType
     : public mlir::Type::TypeBase<SigType, mlir::Type, detail::SigTypeStorage> {
 public:
   using Base::Base;
+
   /// Return whether the given kind is of type Sig
   static bool kindof(unsigned kind) { return kind == LLHDTypes::Sig; }
+
   /// Get a new instance of llhd sig type
   static SigType get(mlir::Type underlyingType);
-  /// Get a new instance of llhd sig type defined at the given location
-  static SigType getChecked(mlir::Type underlyingType, Location location);
+
   /// Verify construction invariants, passed to get and getChecked
-  static LogicalResult VerifyConstructionInvariants(Location loc,
+  static LogicalResult verifyConstructionInvariants(Location loc,
                                                     Type underlyingType);
   /// The underlying type of the sig type
   Type getUnderlyingType();
+
+  /// Get the keyword for the signal type
+  static llvm::StringRef getKeyword() { return "sig"; }
 };
 
 class TimeType : public Type::TypeBase<TimeType, Type> {
@@ -68,6 +72,9 @@ public:
 
   /// Get a new isntance of type Time
   static TimeType get(MLIRContext *context);
+
+  /// Get the keyword for the time type
+  static llvm::StringRef getKeyword() { return "time"; }
 };
 
 //===----------------------------------------------------------------------===//
@@ -84,29 +91,39 @@ class TimeAttr
     : public Attribute::AttrBase<TimeAttr, Attribute, detail::TimeAttrStorage> {
 public:
   using Base::Base;
+  using ValueType = llvm::ArrayRef<unsigned>;
 
   /// Returns whether the passed argument is of kind Time.
   static bool kindof(unsigned kind) { return kind == LLHDAttrs::Time; }
 
   /// Get a new instance of Time attribute.
-  static TimeAttr get(MLIRContext *context, unsigned time, unsigned delta,
-                      unsigned eps);
-  static LogicalResult VerifyConstructionInvariants(Location loc, unsigned time,
-                                                    unsigned delta,
-                                                    unsigned eps);
+  static TimeAttr get(Type type, llvm::ArrayRef<unsigned> timeValues,
+                      llvm::StringRef timeUnit);
 
-  /// Get the time value stored in the attribute.
-  unsigned getTime();
+  /// Verify construction invariants of a new time attribute.
+  static LogicalResult
+  verifyConstructionInvariants(Location loc, Type type,
+                               llvm::ArrayRef<unsigned> timeValues,
+                               llvm::StringRef timeUnit);
 
-  /// Get the delta value stored in the attribute. Returns 0 if no delta value
-  /// is defined.
-  unsigned getDelta();
+  /// Get the time values stored in the attribute.
+  llvm::ArrayRef<unsigned> getValue() const;
 
-  /// Get the eps value stored in the attribute. Returns 0 if no epsilon value
-  /// is defined.
-  unsigned getEps();
+  /// Get the real time value of the attribute.
+  unsigned getTime() const;
+
+  /// Get the delta step value of the attribute.
+  unsigned getDelta() const;
+
+  /// Get the epsilon value of the attribute.
+  unsigned getEps() const;
+
+  /// Get the real time unit used by the attribute.
+  llvm::StringRef getTimeUnit() const;
+
+  /// Get the keyword of the time attribute
+  static llvm::StringRef getKeyword() { return "time"; }
 };
-
 } // namespace llhd
 } // namespace mlir
 

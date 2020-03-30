@@ -1,31 +1,30 @@
 #include "Dialect/LLHD/LLHDOps.h"
-#include "Dialect/LLHD/LLHDDialect.h"
 #include "llvm/ADT/ArrayRef.h"
 // #include "llvm/ADT/STLExtras.h"
 // #include "llvm/ADT/iterator_range.h"
 // #include "llvm/Support/raw_ostream.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/IR/Attributes.h"
-#include "mlir/IR/Block.h"
+// #include "mlir/Dialect/StandardOps/IR/Ops.h"
+// #include "mlir/IR/Attributes.h"
+// #include "mlir/IR/Block.h"
 // #include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/Function.h"
-#include "mlir/IR/FunctionImplementation.h"
-#include "mlir/IR/Module.h"
+// #include "mlir/IR/Builders.h"
+// #include "mlir/IR/Function.h"
+// #include "mlir/IR/FunctionImplementation.h"
+// #include "mlir/IR/Module.h"
 #include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/OperationSupport.h"
+// #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/Region.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
-#include "mlir/Support/Functional.h"
-#include "mlir/Support/LLVM.h"
-#include "mlir/Support/LogicalResult.h"
-#include "mlir/Support/STLExtras.h"
+// #include "mlir/Support/Functional.h"
+// #include "mlir/Support/LLVM.h"
+// #include "mlir/Support/LogicalResult.h"
+// #include "mlir/Support/STLExtras.h"
 // #include <bits/stdint-intn.h>
-#include <cstddef>
-#include <functional>
-#include <iterator>
+// #include <cstddef>
+// #include <functional>
+// #include <iterator>
 //#include <llvm-9/llvm/ADT/STLExtras.h>
 
 using namespace mlir;
@@ -33,6 +32,29 @@ using namespace mlir;
 //===---------------------------------------------------------------------===//
 // LLHD Operations
 //===---------------------------------------------------------------------===//
+
+// Const Op
+
+static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
+  Attribute val;
+  Type type;
+  if (parser.parseOptionalAttrDict(result.attributes) ||
+      parser.parseAttribute(val, "value", result.attributes))
+    return failure();
+  type = val.getType();
+  return parser.addTypeToList(val.getType(), result.types);
+}
+
+static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
+  printer << op.getOperationName() << " ";
+  printer.printOptionalAttrDict(op.getAttrs(), {"value"});
+  // The custom time attribute is not printing the attribute type by default for
+  // some reason. Work around by printing the attribute without type, explicitly
+  // followed by the operation type
+  printer.printAttributeWithoutType(op.valueAttr());
+  printer << " : ";
+  printer.printType(op.getType());
+}
 
 // Sig Op
 
@@ -269,7 +291,7 @@ static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
   parseEntitySignature(parser, result, args, argTypes);
 
   auto *body = result.addRegion();
-  parser.parseOptionalRegion(*body, args, argTypes);
+  parser.parseRegion(*body, args, argTypes);
   llhd::EntityOp::ensureTerminator(*body, parser.getBuilder(), result.location);
   return success();
 }

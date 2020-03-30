@@ -1,37 +1,38 @@
 #ifndef LLHD_OPS
 #define LLHD_OPS
 
-#ifndef LLHD_BASE
 include "Dialect/LLHD/LLHDBase.td"
-#endif // LLHD_BASE
+
+//===----------------------------------------------------------------------===//
+// Constant Operation
+//===----------------------------------------------------------------------===//
 
 def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
-    let summary = "Constant";
+    let summary = "Introduce a new constant.";
 
     let description = [{
-        The const instruction is used to introduce a constant value into the IR. 
-        The first version constructs a constant integer value, the second a 
-        constant integer signal, and the third a constant time value.
+        The `llhd.const` instruction introduces a new constant value as an 
+        SSA-operator.  
+        Legal types are integers and time. Note: Signals 
+        are not legal to define using `llhd.const`, use the `llhd.sig` 
+        instruction for that.
+
+        **Custom syntax:**
+
         ```
-        %result = llhd.const <int> : iN
-        %result = llhd.const <int> : !llhd.sig<iN>
-        %result = llhd.const <time> : time
+        const-op ::= <ssa-id> `=` `llhd.const` attr-dict <attribute-value> `:` <result-type>
         ```
-        `int` is an integer literal such as `0b0101`, `0o1247`, `129`, or `0x14F3E`
-        time is a time literal such as `1s`, `1s 2d`, or `1s 2d 3e`, where the 
-        real component may carry an SI prefix such as `as`, `fs`, `ps`, `ns`, 
-        `us`, `ms`.
+
+        **Examples:**
+        
+        ```mlir
+        %0 = llhd.const 1 : i64
+        %1 = llhd.const #llhd.time<1ns, 2d, 3d> : !llhd.time
+        ```
     }];
 
-    let arguments = (ins I64Attr:$value);
-    let results = (outs LLHD_Type:$out);
-
-    let assemblyFormat = "$value attr-dict `:` type($out)";
-
-    let builders = [
-        // Build a constant with a given constant integer value.
-        OpBuilder<"Builder *builder, OperationState &state, int64_t value">
-    ];
+    let arguments = (ins AnyAttr:$value);
+    let results = (outs LLHD_ElementType:$out);
 }
 
 //===----------------------------------------------------------------------===//
