@@ -9,14 +9,18 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
     let summary = "Constant";
 
     let description = [{
-        The const instruction is used to introduce a constant value into the IR. The first version constructs a constant integer value, the second a constant integer signal, and the third a constant time value.
+        The const instruction is used to introduce a constant value into the IR. 
+        The first version constructs a constant integer value, the second a 
+        constant integer signal, and the third a constant time value.
         ```
         %result = llhd.const <int> : iN
         %result = llhd.const <int> : !llhd.sig<iN>
         %result = llhd.const <time> : time
         ```
         `int` is an integer literal such as `0b0101`, `0o1247`, `129`, or `0x14F3E`
-        time is a time literal such as `1s`, `1s 2d`, or `1s 2d 3e`, where the real component may carry an SI prefix such as `as`, `fs`, `ps`, `ns`, `us`, `ms`.
+        time is a time literal such as `1s`, `1s 2d`, or `1s 2d 3e`, where the 
+        real component may carry an SI prefix such as `as`, `fs`, `ps`, `ns`, 
+        `us`, `ms`.
     }];
 
     let arguments = (ins I64Attr:$value);
@@ -43,7 +47,8 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
         %result = llhd.sig %init : T
         ```
 
-        The `sig` instruction creates a signal in an entity with the initial value `%init` and returns that signal.
+        The `sig` instruction creates a signal in an entity with the initial 
+        value `%init` and returns that signal.
 
         * `T` may be any type.  
         * `%init` is the initial value of the signal and must be of type `T`.  
@@ -111,7 +116,7 @@ def LLHD_WaitOp : LLHD_Op<"wait",
     let summary = "Suspends execution of a process.";
     // TODO: improve description
     let description = [{
-        The `wait` instruction suspends execution of a process until any of the \
+        The `wait` instruction suspends execution of a process until any of the 
         observed signals change or optionally a fixed time interval has passed.
     }];
 
@@ -121,14 +126,14 @@ def LLHD_WaitOp : LLHD_Op<"wait",
     let successors = (successor AnySuccessor:$dest);
 
 //    let assemblyFormat = [{
-//        $obs `,` $dest (`(` $destOps^ `:` type($destOps) `)` `,`)? ($time^ `:` type($time))? attr-dict `:` type($obs)
+//        $obs `[` $dest (`(` $destOps^ `:` type($destOps) `)`)? `]` attr-dict `:` type($obs)
 //    }];
 }
 
 def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
     let summary = "Terminates execution of a process.";
     let description = [{
-        The `halt` instruction terminates execution of a process. All processes \
+        The `halt` instruction terminates execution of a process. All processes 
         must eventually halt or consist of an infinite loop.
         * This is a terminator instruction
     }];
@@ -157,16 +162,16 @@ def LLHD_NotOp : LLHD_Op<"not", [NoSideEffect, SameOperandsAndResultType]> {
         |       |  1  |  0  |
 
         Truth Table for `lN`:
-        TODO
+
         | `not` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-        |       |     |     |     |     |     |     |     |     |     |
+        |       |  U  |  X  |  1  |  0  |  X  |  X  |  1  |  0  |  X  |
     }];
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>:$result);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
 
-    let assemblyFormat = "`(` $value `)` attr-dict `:` type($result)";
+    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
 def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
@@ -187,21 +192,22 @@ def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResul
         |   1   |  0  |  1  |
 
         Truth Table for `lN`:
-        TODO
+
         | `and` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-        |   U   |     |     |     |     |     |     |     |     |     |
-        |   X   |     |     |     |     |     |     |     |     |     |
-        |   0   |     |     |     |     |     |     |     |     |     |
-        |   1   |     |     |     |     |     |     |     |     |     |
-        |   Z   |     |     |     |     |     |     |     |     |     |
-        |   W   |     |     |     |     |     |     |     |     |     |
-        |   L   |     |     |     |     |     |     |     |     |     |
-        |   H   |     |     |     |     |     |     |     |     |     |
-        |   -   |     |     |     |     |     |     |     |     |     |
+        |   U   |  U  |  U  |  0  |  U  |  U  |  U  |  0  |  U  |  U  |
+        |   X   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
+        |   0   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |
+        |   1   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   Z   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
+        |   W   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
+        |   L   |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |  0  |
+        |   H   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   -   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
+                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
@@ -225,21 +231,22 @@ def LLHD_OrOp : LLHD_Op<"or", [NoSideEffect, Commutative, SameOperandsAndResultT
         |   1   |  0  |  1  |
 
         Truth Table for `lN`:
-        TODO
+
         | `or`  |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-        |   U   |     |     |     |     |     |     |     |     |     |
-        |   X   |     |     |     |     |     |     |     |     |     |
-        |   0   |     |     |     |     |     |     |     |     |     |
-        |   1   |     |     |     |     |     |     |     |     |     |
-        |   Z   |     |     |     |     |     |     |     |     |     |
-        |   W   |     |     |     |     |     |     |     |     |     |
-        |   L   |     |     |     |     |     |     |     |     |     |
-        |   H   |     |     |     |     |     |     |     |     |     |
-        |   -   |     |     |     |     |     |     |     |     |     |
+        |   U   |  U  |  U  |  U  |  1  |  U  |  U  |  U  |  1  |  U  |
+        |   X   |  U  |  X  |  X  |  1  |  X  |  X  |  X  |  1  |  X  |
+        |   0   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   1   |  1  |  1  |  1  |  1  |  1  |  1  |  1  |  1  |  1  |
+        |   Z   |  U  |  X  |  X  |  1  |  X  |  X  |  X  |  1  |  X  |
+        |   W   |  U  |  X  |  X  |  1  |  X  |  X  |  X  |  1  |  X  |
+        |   L   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   H   |  1  |  1  |  1  |  1  |  1  |  1  |  1  |  1  |  1  |
+        |   -   |  U  |  X  |  X  |  1  |  X  |  X  |  X  |  1  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs,
+                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
@@ -263,21 +270,22 @@ def LLHD_XorOp : LLHD_Op<"xor", [NoSideEffect, Commutative, SameOperandsAndResul
         |   1   |  0  |  1  |
 
         Truth Table for `lN`:
-        TODO
+
         | `xor` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-        |   U   |     |     |     |     |     |     |     |     |     |
-        |   X   |     |     |     |     |     |     |     |     |     |
-        |   0   |     |     |     |     |     |     |     |     |     |
-        |   1   |     |     |     |     |     |     |     |     |     |
-        |   Z   |     |     |     |     |     |     |     |     |     |
-        |   W   |     |     |     |     |     |     |     |     |     |
-        |   L   |     |     |     |     |     |     |     |     |     |
-        |   H   |     |     |     |     |     |     |     |     |     |
-        |   -   |     |     |     |     |     |     |     |     |     |
+        |   U   |  U  |  U  |  U  |  U  |  U  |  U  |  U  |  U  |  U  |
+        |   X   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+        |   0   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   1   |  U  |  X  |  1  |  0  |  X  |  X  |  1  |  0  |  X  |
+        |   Z   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+        |   W   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
+        |   L   |  U  |  X  |  0  |  1  |  X  |  X  |  0  |  1  |  X  |
+        |   H   |  U  |  X  |  1  |  0  |  X  |  X  |  1  |  0  |  X  |
+        |   -   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
+                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
 
     let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
@@ -286,25 +294,25 @@ def LLHD_XorOp : LLHD_Op<"xor", [NoSideEffect, Commutative, SameOperandsAndResul
 def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     let summary = "Shifts a value to the left by a given amount.";
     let description = [{
-        The instruction is transparent to signals and pointers. For example, \
-        passing a signal as argument will shift the underlying value and return \
+        The instruction is transparent to signals and pointers. For example,
+        passing a signal as argument will shift the underlying value and return 
         a signal to the shifted value.
 
         ```
         %result = llhd.shl(%base, %hidden, %amount) : (T, Th, Ta) -> T
         ```
         * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
-        * `Th` must be of the same type as T, but may have a different number \
+        * `Th` must be of the same type as T, but may have a different number 
           of bits of elements.
-        * The maximum shift amount is determined by the number of bits or \
+        * The maximum shift amount is determined by the number of bits or 
           elements in `Th`.
         * `Ta` must be `iN`.
-        * `%base` is the base value that is produced if the shift amount is 0, \
+        * `%base` is the base value that is produced if the shift amount is 0, 
           and must be of type `T`.
-        * `%hidden` is the hidden value that is uncovered by non-zero shift \
+        * `%hidden` is the hidden value that is uncovered by non-zero shift 
           amounts, and must be of type `Th`.
-        * `%amount` is the unsigned shift amount and determines by how many \
-          positions the value is to be shifted. Must be of type `Ta`. Behavior \
+        * `%amount` is the unsigned shift amount and determines by how many 
+          positions the value is to be shifted. Must be of type `Ta`. Behavior 
           for values `%amount > N` is undefined.
         * `%result` is of type `T`.
     }];
@@ -323,25 +331,25 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
 def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     let summary = "Shifts a value to the right by a given amount.";
     let description = [{
-        The instruction is transparent to signals and pointers. For example, \
-        passing a signal as argument will shift the underlying value and return \
+        The instruction is transparent to signals and pointers. For example, 
+        passing a signal as argument will shift the underlying value and return 
         a signal to the shifted value.
 
         ```
         %result = llhd.shr(%base, %hidden, %amount) : (T, Th, Ta) -> T
         ```
         * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
-        * `Th` must be of the same type as T, but may have a different number \
+        * `Th` must be of the same type as T, but may have a different number 
           of bits of elements.
-        * The maximum shift amount is determined by the number of bits or \
+        * The maximum shift amount is determined by the number of bits or 
           elements in `Th`.
         * `Ta` must be `iN`.
-        * `%base` is the base value that is produced if the shift amount is 0, \
+        * `%base` is the base value that is produced if the shift amount is 0, 
           and must be of type `T`.
-        * `%hidden` is the hidden value that is uncovered by non-zero shift \
+        * `%hidden` is the hidden value that is uncovered by non-zero shift 
           amounts, and must be of type `Th`.
-        * `%amount` is the unsigned shift amount and determines by how many \
-          positions the value is to be shifted. Must be of type `Ta`. Behavior \
+        * `%amount` is the unsigned shift amount and determines by how many 
+          positions the value is to be shifted. Must be of type `Ta`. Behavior 
           for values `%amount > N` is undefined.
         * `%result` is of type `T`.
     }];
