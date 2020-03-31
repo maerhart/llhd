@@ -107,17 +107,31 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 
     // TODO: update description
     let description = [{
-        ```
-        drv T$ %sig, %value
-        ```
-        The drv instruction drives a `%value` onto a signal `%sig`.
+        The `llhd.drv` operation drives a new value onto a signal. A time operand
+        also has to be passed, which specifies the frequency at which the drive
+        will be performed. This operation does not define any new SSA operands.
 
-        * `T` may be any type.
-        * `%sig` must be of type `T$`.
-        * `%value` must be of type `T`.
+        **Custom Syntax:**
+
+        ```
+        drv-op ::= `llhd.drv` <ssa-signal>`,` <ssa-const>`,` <ssa-time> `:` !llhd.sig< <const-type> >`,` <const-type>`,` <time-type>
+        ```
+
+        **Examples:**
+
+        ```mlir
+        %init = llhd.const 1 : i1
+        %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
+        %sig = llhd.sig %init : i1 -> !llhd.sig<i1>
+        %new = llhd.not %init : i1
+
+        llhd.drv %sig, %new, %time : !llhd.sig<i1>, i1, !llhd.time
+        ```
     }];
 
-    let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value);
+    let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value, LLHD_TimeType:$time);
+
+    let assemblyFormat = "$signal`,` $value`,` $time attr-dict `:` type($signal)`,` type($value)`,` type($time)";
 
     let verifier = [{ return ::verify(*this); }];
 }

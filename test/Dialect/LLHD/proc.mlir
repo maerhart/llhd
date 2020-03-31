@@ -15,13 +15,11 @@ llhd.proc @empty() -> () {
 // CHECK-NEXT: llhd.proc @foo(%[[ARG0:.*]] : !llhd.sig<i64>, %[[ARG1:.*]] : !llhd.sig<i64>) -> (%[[OUT0:.*]] : !llhd.sig<i64>) {
 "llhd.proc"() ({
 // CHECK-NEXT: %[[C0:.*]] = llhd.const 1
-// CHECK-NEXT: llhd.drv %[[OUT0:.*]], %[[C0:.*]] 
 // CHECK-NEXT: %[[P0:.*]] = llhd.prb %[[ARG0:.*]]
 // CHECK-NEXT: llhd.halt
 // CHECK-NEXT: }
 ^body(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i64>, %out0 : !llhd.sig<i64>):
     %0 = llhd.const 1 : i64
-    llhd.drv %out0, %0 : !llhd.sig<i64>
     %1 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
     "llhd.halt"() {} : () -> ()
 }) {sym_name="foo", ins=2, type=(!llhd.sig<i64>, !llhd.sig<i64>, !llhd.sig<i64>)->()} : () -> ()

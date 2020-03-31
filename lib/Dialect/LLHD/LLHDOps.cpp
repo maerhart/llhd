@@ -134,42 +134,16 @@ static LogicalResult verify(llhd::PrbOp op) {
 
 // Drv Op
 
-/// Parse an LLHD drv operation with the following syntax:
-/// op ::= llhd.drv %signal, %value : !llhd.sig<type>
-static ParseResult parseDrvOp(OpAsmParser &parser, OperationState &result) {
-  llvm::SmallVector<OpAsmParser::OperandType, 2> operands;
-  llhd::SigType sigType;
-  if (parser.parseOperandList(operands, 2) || parser.parseColon() ||
-      parser.parseType(sigType))
-    return failure();
-  if (parser.resolveOperand(operands[0], sigType, result.operands) ||
-      parser.resolveOperand(operands[1], sigType.getUnderlyingType(),
-                            result.operands))
-    return failure();
-
-  return success();
-}
-
-/// Print an LLHD drv operation
-static void print(OpAsmPrinter &printer, llhd::DrvOp op) {
-  printer << op.getOperationName() << " ";
-  printer << op.getOperands() << " : ";
-  printer.printType(op.signal().getType());
-}
-
+/// Verify construction invariants of a llhd.drv operation
 static LogicalResult verify(llhd::DrvOp op) {
-  Type opType = op.value().getType();
-  llhd::SigType sigType = op.signal().getType().dyn_cast<llhd::SigType>();
+  auto sigType = op.signal().getType().dyn_cast<llhd::SigType>();
 
-  if (!sigType) {
-    op.emitError("Expected signal type, got ") << op.signal().getType();
-    return failure();
-  }
-  if (opType != sigType.getUnderlyingType()) {
-    op.emitError("The operand to drive has to be the same type as the "
-                 "signal's underlying type, got ")
-        << opType;
-  }
+  // check the type of the new value matches the type carried by the signal
+  if (sigType.getUnderlyingType() != op.value().getType())
+    return op.emitError("The new value's type is not equal to the signal type. "
+                        "Expected ")
+           << sigType.getUnderlyingType() << " but got "
+           << op.value().getType();
 
   return success();
 }
