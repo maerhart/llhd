@@ -87,16 +87,24 @@ static LogicalResult verify(llhd::SigOp op) {
 // Prb Op
 
 /// Parse an LLHD prb operation with the following syntax:
-/// op ::= llhd.prb %operand : !llhd.sig<type>
+/// prb-op ::= <ssa-id> `=` `llhd.prb` <ssa-use> attr-dict `:` !llhd.sig<
+/// <type> > `->` <type>
 static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
   llhd::SigType sigType;
+  Type resType;
   OpAsmParser::OperandType operand;
-  if (parser.parseOperand(operand) || parser.parseColonType(sigType))
+
+  if (parser.parseOperand(operand) ||
+      parser.parseOptionalAttrDict(result.attributes) ||
+      parser.parseColonType(sigType) || parser.parseArrow() ||
+      parser.parseType(resType))
     return failure();
+
   if (parser.resolveOperand(operand, sigType, result.operands))
     return failure();
 
-  result.addTypes(sigType.getUnderlyingType());
+  result.addTypes(resType);
+
   return success();
 }
 
@@ -104,11 +112,25 @@ static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
 static void print(OpAsmPrinter &printer, llhd::PrbOp op) {
   printer << op.getOperationName() << " ";
   printer.printOperand(op.signal());
+  printer.printOptionalAttrDict(op.getAttrs());
   printer << " : ";
-  printer.printType(llhd::SigType::get(op.getType()));
+  printer.printType(op.signal().getType());
+  printer << " -> ";
+  printer.printType(op.getType());
 }
 
-static LogicalResult verify(llhd::PrbOp op) { return success(); }
+/// Verify the construction invariants of a llhd.prb instruction
+static LogicalResult verify(llhd::PrbOp op) {
+  auto sigType = op.signal().getType().dyn_cast<llhd::SigType>();
+
+  // check the type carried by the signal matches the result type
+  if (sigType.getUnderlyingType() != op.getType())
+    return op.emitError(
+               "The operand type is not equal to the signal type. Expected ")
+           << sigType.getUnderlyingType() << " but got " << op.getType();
+
+  return success();
+}
 
 // Drv Op
 

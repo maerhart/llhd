@@ -76,16 +76,24 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 def LLHD_PrbOp : LLHD_Op<"prb", []> {
     let summary = "Probe a signal.";
 
-    // TODO: update description
     let description = [{
-        ```
-        %result = prb T$ %sig
-        ```
-        The `prb` instruction probes the current value of a signal `%sig`.
+       The `llhd.prb` instruction probes a signal and returns the value it
+       currently carries as a new SSA operand. The result type is always
+       the type carried by the signal.
 
-        * `T` may be any type.
-        * `%sig` must be of type `T$`.
-        * `%result` is of type `T`.
+        **Custom syntax:**
+
+        ```
+        prb-op ::= <ssa-id> `=` `llhd.prb` <ssa-use> attr-dict `:` !llhd.sig< <type> > `->` <type>
+        ```
+
+        **Examples:***
+        
+        ```mlir
+        %const_i1 = llhd.const 1 : i1
+        %sig_i1 = llhd.sig %const_i1 : i1 -> !llhd.sig<i1>
+        %prbd = llhd.prb %sig_i1 : !llhd.sig<i1> -> i1
+        ```
     }];
 
     let arguments = (ins LLHD_SigType:$signal);

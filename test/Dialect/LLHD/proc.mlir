@@ -22,7 +22,7 @@ llhd.proc @empty() -> () {
 ^body(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i64>, %out0 : !llhd.sig<i64>):
     %0 = llhd.const 1 : i64
     llhd.drv %out0, %0 : !llhd.sig<i64>
-    %1 = llhd.prb %arg0 : !llhd.sig<i64>
+    %1 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
     "llhd.halt"() {} : () -> ()
 }) {sym_name="foo", ins=2, type=(!llhd.sig<i64>, !llhd.sig<i64>, !llhd.sig<i64>)->()} : () -> ()
 
