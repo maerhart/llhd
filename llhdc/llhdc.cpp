@@ -20,7 +20,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "Dialect/LLHD/LLHDDialect.h"
-#include "mlir/Analysis/Passes.h"
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
