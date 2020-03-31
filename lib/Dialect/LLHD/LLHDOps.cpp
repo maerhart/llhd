@@ -38,30 +38,50 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
 // Sig Op
 
 /// Parse an LLHD sig operation with the following syntax:
-/// op ::= llhd.sig %operand : type
+/// op ::= <ssa-id> `=` `llhd.sig` <ssa-use> attr-dict `:` <type> -> !llhd.sig<
+/// <type> >
 static ParseResult parseSigOp(OpAsmParser &parser, OperationState &result) {
   OpAsmParser::OperandType operand;
-  Type sigType;
-  if (parser.parseOperand(operand) || parser.parseColonType(sigType) ||
-      parser.parseOptionalAttrDict(result.attributes))
+  Type type, sigType;
+  if (parser.parseOperand(operand) ||
+      parser.parseOptionalAttrDict(result.attributes) ||
+      parser.parseColonType(type) || parser.parseArrow() ||
+      parser.parseType(sigType))
     return failure();
 
-  if (parser.resolveOperand(operand, sigType, result.operands))
+  if (parser.resolveOperand(operand, type, result.operands))
     return failure();
 
-  result.addTypes(llhd::SigType::get(sigType));
+  // add result type
+  result.addTypes(sigType);
 
   return success();
 }
 
 /// Print an LLHD sig operation
 static void print(OpAsmPrinter &printer, llhd::SigOp op) {
-  // get the resulting signal type
-  llhd::SigType opType = op.getType().dyn_cast<llhd::SigType>();
   printer << op.getOperationName() << " ";
   printer.printOperand(op.init());
+  printer.printOptionalAttrDict(op.getAttrs());
   printer << " : ";
-  printer.printType(opType.getUnderlyingType());
+  printer.printType(op.init().getType());
+  printer << " -> ";
+  printer.printType(op.getType());
+}
+
+/// Verify the construction invariants of a sig operation.
+static LogicalResult verify(llhd::SigOp op) {
+  // cast the result type to sig
+  auto resultType = op.getType().dyn_cast<llhd::SigType>();
+
+  // check the operand type matches the result type
+  if (op.init().getType() != resultType.getUnderlyingType())
+    return op.emitError(
+               "The operand type is not equal to the signal type. Expected ")
+           << resultType.getUnderlyingType() << " but got "
+           << op.init().getType();
+
+  return success();
 }
 
 // Prb Op
