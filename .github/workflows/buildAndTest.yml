@@ -47,7 +47,7 @@ jobs:
     - name: Build and Test LLHD
       run: cd llhd/build && cmake --build . --target check-llhdc
     - name: Generate documentation
-      run: cd llhd/build && cmake --build . --target llhd-doc
+      run: cd llhd/build && cmake --build . --target mlir-doc
     - name: Get doc target repo
       uses: actions/checkout@v2
       with:
@@ -57,7 +57,7 @@ jobs:
     - name: Add doc to target repo
       run: |
         cat llhd-docs/frontmatter_template > llhd-docs/index.md
-        cat llhd/docs/Dialect/LLHDOps.md >> llhd-docs/index.md
+        cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/index.md
     - name: Commit and push doc to target repo
       run: | 
         cd llhd-docs
