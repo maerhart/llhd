@@ -1,4 +1,4 @@
-// RUN: llhdc %s | FileCheck %s
+// RUN: llhdc %s -allow-unregistered-dialects | FileCheck %s
 
 func @test_time_type() {
     // CHECK: %[[CONST:.*]] = "time_result"() : () -> !llhd.time 
