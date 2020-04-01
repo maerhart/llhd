@@ -86,39 +86,6 @@ static LogicalResult verify(llhd::SigOp op) {
 
 // Prb Op
 
-/// Parse an LLHD prb operation with the following syntax:
-/// prb-op ::= <ssa-id> `=` `llhd.prb` <ssa-use> attr-dict `:` !llhd.sig<
-/// <type> > `->` <type>
-static ParseResult parsePrbOp(OpAsmParser &parser, OperationState &result) {
-  llhd::SigType sigType;
-  Type resType;
-  OpAsmParser::OperandType operand;
-
-  if (parser.parseOperand(operand) ||
-      parser.parseOptionalAttrDict(result.attributes) ||
-      parser.parseColonType(sigType) || parser.parseArrow() ||
-      parser.parseType(resType))
-    return failure();
-
-  if (parser.resolveOperand(operand, sigType, result.operands))
-    return failure();
-
-  result.addTypes(resType);
-
-  return success();
-}
-
-/// Print an LLHD prb operation
-static void print(OpAsmPrinter &printer, llhd::PrbOp op) {
-  printer << op.getOperationName() << " ";
-  printer.printOperand(op.signal());
-  printer.printOptionalAttrDict(op.getAttrs());
-  printer << " : ";
-  printer.printType(op.signal().getType());
-  printer << " -> ";
-  printer.printType(op.getType());
-}
-
 /// Verify the construction invariants of a llhd.prb instruction
 static LogicalResult verify(llhd::PrbOp op) {
   auto sigType = op.signal().getType().dyn_cast<llhd::SigType>();

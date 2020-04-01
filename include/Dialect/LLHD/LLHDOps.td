@@ -85,7 +85,7 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
         **Custom syntax:**
 
         ```
-        prb-op ::= <ssa-id> `=` `llhd.prb` <ssa-use> attr-dict `:` !llhd.sig< <type> > `->` <type>
+        prb-op ::= ssa-id `=` `llhd.prb` ssa-sig attr-dict `:` !llhd.sig<type> `->` type
         ```
 
         **Examples:***
@@ -98,7 +98,9 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
     }];
 
     let arguments = (ins LLHD_SigType:$signal);
-    let results = (outs LLHD_ElementType:$output);
+    let results = (outs LLHD_ElementType);
+
+    let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type(results)";
 
     let verifier = [{ return ::verify(*this); }];
 }
