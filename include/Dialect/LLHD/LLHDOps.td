@@ -2,7 +2,7 @@
 #define LLHD_OPS
 
 include "mlir/Interfaces/SideEffects.td"
-include "Dialect/LLHD/LLHDBase.td"
+include "LLHD.td"
 
 //===----------------------------------------------------------------------===//
 // Constant Operation
