@@ -51,7 +51,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
        **Custom syntax:**
 
        ```
-       sig-op ::= <ssa-id> `=` `llhd.sig` <ssa-use> attr-dict `:` <init-type> `->` !llhd.sig< <init-type> >
+       sig-op ::= ssa-id `=` `llhd.sig` ssa-init attr-dict `:` init-type `->` !llhd.sig<init-type>
        ```
 
        **Examples:**
@@ -70,6 +70,8 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 
     let arguments = (ins LLHD_ElementType:$init);
     let results = (outs LLHD_SigType);
+
+    let assemblyFormat = "$init attr-dict `:` type($init) `->` type(results)";
 
     let verifier = [{ return ::verify(*this); }];
 }

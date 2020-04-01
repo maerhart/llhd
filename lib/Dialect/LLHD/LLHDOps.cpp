@@ -37,38 +37,6 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
 
 // Sig Op
 
-/// Parse an LLHD sig operation with the following syntax:
-/// op ::= <ssa-id> `=` `llhd.sig` <ssa-use> attr-dict `:` <type> -> !llhd.sig<
-/// <type> >
-static ParseResult parseSigOp(OpAsmParser &parser, OperationState &result) {
-  OpAsmParser::OperandType operand;
-  Type type, sigType;
-  if (parser.parseOperand(operand) ||
-      parser.parseOptionalAttrDict(result.attributes) ||
-      parser.parseColonType(type) || parser.parseArrow() ||
-      parser.parseType(sigType))
-    return failure();
-
-  if (parser.resolveOperand(operand, type, result.operands))
-    return failure();
-
-  // add result type
-  result.addTypes(sigType);
-
-  return success();
-}
-
-/// Print an LLHD sig operation
-static void print(OpAsmPrinter &printer, llhd::SigOp op) {
-  printer << op.getOperationName() << " ";
-  printer.printOperand(op.init());
-  printer.printOptionalAttrDict(op.getAttrs());
-  printer << " : ";
-  printer.printType(op.init().getType());
-  printer << " -> ";
-  printer.printType(op.getType());
-}
-
 /// Verify the construction invariants of a sig operation.
 static LogicalResult verify(llhd::SigOp op) {
   // cast the result type to sig
