@@ -1,6 +1,7 @@
 #ifndef LLHD_OPS
 #define LLHD_OPS
 
+include "mlir/Interfaces/SideEffects.td"
 include "Dialect/LLHD/LLHDBase.td"
 
 //===----------------------------------------------------------------------===//

@@ -2,67 +2,41 @@ set(LLVM_OPTIONAL_SOURCES
   null.cpp
 )
 
+get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
+get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 set(LIBS
-  MLIRLoopOpsTransforms
-  MLIRLoopAnalysis
-  MLIRAnalysis
-  MLIRAffineOps
-  MLIRAffineToStandard
-  MLIRDialect
-  MLIRLoopsToGPU
-  MLIRLinalgToLLVM
+        ${dialect_libs}
+        ${conversion_libs}
+        MLIRLoopOpsTransforms
+        MLIRLoopAnalysis
+        MLIRAffineTransformsTestPasses
+        MLIRAnalysis
+        MLIRDialect
+        MLIREDSC
+        MLIROptLib
+        MLIRParser
+        MLIRPass
+        MLIRQuantizerFxpMathConfig
+        MLIRQuantizerSupport
+        MLIRQuantizerTransforms
+        MLIRSPIRV
+        MLIRSPIRVTestPasses
+        MLIRSPIRVTransforms
+        MLIRTransforms
+        MLIRTransformUtils
+        MLIRTestDialect
+        MLIRTestIR
+        MLIRTestPass
+        MLIRTestTransforms
+        MLIRSupport
+        MLIRIR
+        MLIROptLib
+        LLVMSupport
+        LLVMCore
+        LLVMAsmParser
 
-  MLIRLoopToStandard
-  MLIREDSC
-  MLIRFxpMathOps
-  MLIRGPU 
-  MLIRGPUtoCUDATransforms 
-  MLIRGPUtoNVVMTransforms 
-  MLIRGPUtoROCDLTransforms 
-  MLIRGPUtoSPIRVTransforms 
-  MLIRGPUtoVulkanTransforms 
-  MLIRLinalgOps
-  MLIRLinalgAnalysis
-  MLIRLinalgEDSC
-  MLIRLinalgTransforms
-  MLIRLinalgUtils
-  MLIRLLVMIR
-  MLIRLoopOps
-  MLIRNVVMIR
-  MLIROpenMP
-  MLIROptLib
-  MLIRParser
-  MLIRPass
-  MLIRQuantizerFxpMathConfig
-  MLIRQuantizerSupport
-  MLIRQuantizerTransforms
-  MLIRQuantOps
-  MLIRROCDLIR
-  MLIRSPIRV
-  MLIRLinalgToSPIRVTransforms
-  MLIRStandardToSPIRVTransforms
-  MLIRSPIRVTestPasses
-  MLIRSPIRVTransforms
-  MLIRStandardOps
-  MLIRStandardToLLVM
-  MLIRTransforms
-  MLIRTransformUtils
-  MLIRTestDialect
-  MLIRTestIR
-  MLIRTestPass
-  MLIRTestTransforms
-  MLIRSupport
-  MLIRVectorOps
-  MLIRVectorToLLVM
-  MLIRVectorToLoops
-  MLIRIR
-  MLIROptLib
-  LLVMSupport
-  LLVMCore
-  LLVMAsmParser
-
-  MLIRLLHD
-)
+        MLIRLLHD
+        )
 add_llvm_executable(llhdc
  llhdc.cpp
 )
