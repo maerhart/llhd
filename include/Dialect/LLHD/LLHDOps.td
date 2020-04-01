@@ -106,7 +106,6 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
 def LLHD_DrvOp : LLHD_Op<"drv"> {
     let summary = "Drive a value into a signal.";
 
-    // TODO: update description
     let description = [{
         The `llhd.drv` operation drives a new value onto a signal. A time operand
         also has to be passed, which specifies the frequency at which the drive
@@ -115,7 +114,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
         **Custom Syntax:**
 
         ```
-        drv-op ::= `llhd.drv` <ssa-signal>`,` <ssa-const>`,` <ssa-time> `:` !llhd.sig< <const-type> >`,` <const-type>`,` <time-type>
+        drv-op ::= `llhd.drv` ssa-signal `,` ssa-const `,` ssa-time `:` !llhd.sig<const-type> `,` const-type `,` time-type
         ```
 
         **Examples:**
@@ -132,7 +131,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 
     let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value, LLHD_TimeType:$time);
 
-    let assemblyFormat = "$signal`,` $value`,` $time attr-dict `:` type($signal)`,` type($value)`,` type($time)";
+    let assemblyFormat = "operands attr-dict `:` type(operands)";
 
     let verifier = [{ return ::verify(*this); }];
 }
