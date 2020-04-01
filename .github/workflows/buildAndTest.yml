@@ -31,13 +31,13 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-1
+        key: ${{ runner.os }}-llvm-install-2
     - name: Get LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
       with:
         repository: 'llvm/llvm-project'
-        ref: '13be27482e5300ac8d7cafacd8a046a6611ad1c4'
+        ref: 'be7a233e93767a12cc8aa6be94488c3ec8324529'
         path: 'llvm'
     - name: Install LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
