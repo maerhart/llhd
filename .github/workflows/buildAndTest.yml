@@ -37,7 +37,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: 'llvm/llvm-project'
-        ref: 'be7a233e93767a12cc8aa6be94488c3ec8324529'
+        ref: '55e32e92cda79a9eb4487ea8e4ec1b968fac5145'
         path: 'llvm'
     - name: Install LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
