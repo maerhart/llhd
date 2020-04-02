@@ -3,7 +3,7 @@
 
 include "mlir/Interfaces/SideEffects.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
-include "LLHD.td"
+include "LLHDBase.td"
 
 //===----------------------------------------------------------------------===//
 // Constant Operation
@@ -213,23 +213,31 @@ def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
 //=== Bitwise Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_NotOp : LLHD_Op<"not", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Flips each bit of a value.";
+def LLHD_NotOp : LLHD_BitwiseOp<"not", []> {
+    let summary = "Bitwise NOT";
     let description = [{
-        ```
-        %result = llhd.not(%value) : (T) -> T
-        ```
-        * `T` must be `iN` or `lN`.
-        * `%value` is the input argument of type `T`.
-        * `%result` is of type `T`.
+        Takes an integer of any width or a nine-valued-logic (IEEE 1164) value 
+        of any width as input. Flips each bit of a value. The result always has 
+        the exact same type.
 
-        Truth Table for `iN`:
+        **Syntax:**
+        ```
+        not-op ::= ssa-id `=` `llhd.not` ssa-value attr-dict `:` type
+        ```
+
+        **Examples:**
+        ```
+        %0 = llhd.const 0 : i32
+        %1 = llhd.not %0 : i32 
+        ```
+
+        **Truth Table for `iN`:**
 
         | `not` |  0  |  1  |
         |:-----:|:---:|:---:|
         |       |  1  |  0  |
 
-        Truth Table for `lN`:
+        **Truth Table for `lN`:**
 
         | `not` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -237,29 +245,34 @@ def LLHD_NotOp : LLHD_Op<"not", [NoSideEffect, SameOperandsAndResultType]> {
     }];
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
-def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Computes the bitwise AND of two values.";
+def LLHD_AndOp : LLHD_BitwiseOp<"and", [Commutative]> {
+    let summary = "Bitwise AND";
     let description = [{
-        ```
-        %result = llhd.and(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN` or `lN`.
-        * `%lhs` and `%rhs` are the input arguments of type `T`.
-        * `%result` is of type `T`.
+        Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
+        values of the same width as input. Calculates the bitwise AND. The 
+        result is always of the exact same type as the two inputs.
 
-        Truth Table for `iN`:
+        **Syntax:**
+        ```
+        and-op ::= ssa-id `=` `llhd.and` ssa-lhs `,` ssa-rhs attr-dict `:` type
+        ```
+
+        **Examples:**
+        ```
+        %0 = llhd.const 0 : i32
+        %1 = llhd.and %0, %0 : i32 
+        ```
+
+        **Truth Table for `iN`:**
 
         | `and` |  0  |  1  |
         |:-----:|:---:|:---:|
         |   0   |  0  |  0  |
         |   1   |  0  |  1  |
 
-        Truth Table for `lN`:
+        **Truth Table for `lN`:**
 
         | `and` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -276,29 +289,34 @@ def LLHD_AndOp : LLHD_Op<"and", [NoSideEffect, Commutative, SameOperandsAndResul
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
-def LLHD_OrOp : LLHD_Op<"or", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Computes the bitwise OR of two values.";
+def LLHD_OrOp : LLHD_BitwiseOp<"or", [Commutative]> {
+    let summary = "Bitwise OR";
     let description = [{
-        ```
-        %result = llhd.or(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN` or `lN`.
-        * `%lhs` and `%rhs` are the input arguments of type `T`.
-        * `%result` is of type `T`.
+        Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
+        values of the same width as input. Calculates the bitwise OR. The 
+        result is always of the exact same type as the two inputs.
 
-        Truth Table for `iN`:
+        **Syntax:**
+        ```
+        or-op ::= ssa-id `=` `llhd.or` ssa-lhs `,` ssa-rhs attr-dict `:` type
+        ```
+
+        **Examples:**
+        ```
+        %0 = llhd.const 0 : i32
+        %1 = llhd.or %0, %0 : i32 
+        ```
+
+        **Truth Table for `iN`:**
 
         | `or`  |  0  |  1  |
         |:-----:|:---:|:---:|
         |   0   |  0  |  0  |
         |   1   |  0  |  1  |
 
-        Truth Table for `lN`:
+        **Truth Table for `lN`:**
 
         | `or`  |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -315,29 +333,34 @@ def LLHD_OrOp : LLHD_Op<"or", [NoSideEffect, Commutative, SameOperandsAndResultT
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs,
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
-def LLHD_XorOp : LLHD_Op<"xor", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Computes the bitwise XOR of two values.";
+def LLHD_XorOp : LLHD_BitwiseOp<"xor", [Commutative]> {
+    let summary = "Bitwise XOR";
     let description = [{
-        ```
-        %result = llhd.xor(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN` or `lN`.
-        * `%lhs` and `%rhs` are the input arguments of type `T`.
-        * `%result` is of type `T`.
+        Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
+        values of the same width as input. Calculates the bitwise XOR. The 
+        result is always of the exact same type as the two inputs.
 
-        Truth Table for `iN`:
+        **Syntax:**
+        ```
+        xor-op ::= ssa-id `=` `llhd.xor` ssa-lhs `,` ssa-rhs attr-dict `:` type
+        ```
+
+        **Examples:**
+        ```
+        %0 = llhd.const 0 : i32
+        %1 = llhd.xor %0, %0 : i32 
+        ```
+
+        **Truth Table for `iN`:**
 
         | `xor` |  0  |  1  |
         |:-----:|:---:|:---:|
         |   0   |  0  |  0  |
         |   1   |  0  |  1  |
 
-        Truth Table for `lN`:
+        **Truth Table for `lN`:**
 
         | `xor` |  U  |  X  |  0  |  1  |  Z  |  W  |  L  |  H  |  -  |
         |:-----:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -354,9 +377,6 @@ def LLHD_XorOp : LLHD_Op<"xor", [NoSideEffect, Commutative, SameOperandsAndResul
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
 def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
