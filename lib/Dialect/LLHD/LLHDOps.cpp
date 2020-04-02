@@ -84,84 +84,151 @@ static LogicalResult verify(llhd::DrvOp op) {
 }
 
 // Wait Terminator
+static LogicalResult verify(llhd::WaitOp op) {
+  // Check that there is not more than one time operand.
+  if (op.time().size() > 1) {
+    op.emitOpError("It is not allowed to have more than one time operand.");
+    return failure();
+  }
+  return success();
+}
+
 static ParseResult parseWaitOp(OpAsmParser &parser, OperationState &result) {
+  llvm::SMLoc loc = parser.getCurrentLocation();
   SmallVector<OpAsmParser::OperandType, 4> obsOperands;
-  llvm::SMLoc obsOperandsLoc = parser.getCurrentLocation();
-  (void)obsOperandsLoc;
   SmallVector<OpAsmParser::OperandType, 4> destOpsOperands;
-  llvm::SMLoc destOpsOperandsLoc = parser.getCurrentLocation();
-  (void)destOpsOperandsLoc;
-  SmallVector<Type, 1> destOpsTypes;
-  SmallVector<Type, 1> obsTypes;
+  SmallVector<OpAsmParser::OperandType, 1> timeOperands;
+  SmallVector<Type, 4> obsTypes;
+  SmallVector<Type, 4> destOpsTypes;
+  SmallVector<Type, 1> timeTypes;
 
-  if (parser.parseOperandList(obsOperands))
-    return failure();
-  if (parser.parseLSquare())
-    return failure();
-
+  bool hasOptionalTime = false;
   Block *destSuccessor = nullptr;
-  if (parser.parseSuccessor(destSuccessor))
-    return failure();
+
+  // Consider the case where there is not signal to observe
+  if (succeeded(parser.parseOptionalKeyword("for")))
+    hasOptionalTime = true;
+
+  // Parse the signal observe list until a for or a successor can be parsed.
+  while (!hasOptionalTime &&
+         !parser.parseOptionalSuccessor(destSuccessor).hasValue()) {
+    OpAsmParser::OperandType operand;
+    if (parser.parseOperand(operand))
+      return failure();
+    obsOperands.push_back(operand);
+    if (failed(parser.parseOptionalComma())) {
+      if (parser.parseKeyword("for"))
+        return failure();
+      hasOptionalTime = true;
+      break;
+    }
+  }
+
+  // Parse the optional time operand
+  if (hasOptionalTime) {
+    OpAsmParser::OperandType operand;
+    if (parser.parseOperand(operand))
+      return failure();
+    timeOperands.push_back(operand);
+
+    if (parser.parseComma())
+      return failure();
+
+    if (parser.parseSuccessor(destSuccessor))
+      return failure();
+  }
+
+  // Parse the arguments of the target basic block
   if (succeeded(parser.parseOptionalLParen())) {
-
-    if (parser.parseOperandList(destOpsOperands))
+    if (parser.parseOperandList(destOpsOperands, OpAsmParser::Delimiter::None))
       return failure();
-    if (parser.parseColon())
-      return failure();
-
-    if (parser.parseTypeList(destOpsTypes))
+    if (parser.parseColonTypeList(destOpsTypes))
       return failure();
     if (parser.parseRParen())
       return failure();
   }
-  if (parser.parseRSquare())
-    return failure();
+
   if (parser.parseOptionalAttrDict(result.attributes))
     return failure();
-  if (parser.parseColon())
+
+  // Parse the types, notice that the colon is only parsed if there is at least
+  // one type to parse
+  if (!obsOperands.empty() || !timeOperands.empty()) {
+    if (parser.parseColon())
+      return failure();
+
+    // Parse the types of the observed signals, we cannot use the parseTypeList
+    // function from the parser because there we cannot specify the amount of
+    // types in the list to be parsed
+    for (unsigned i = 0, n = obsOperands.size(); i < n; ++i) {
+      Type type;
+      if (parser.parseType(type))
+        return failure();
+
+      obsTypes.push_back(type);
+
+      if (i < n - 1) {
+        if (parser.parseComma())
+          return failure();
+      }
+    }
+
+    // Parse the optional time type at the end of the list
+    if (!timeOperands.empty()) {
+      if (!obsOperands.empty()) {
+        if (parser.parseComma())
+          return failure();
+      }
+      if (parser.parseTypeList(timeTypes))
+        return failure();
+    }
+  }
+  if (parser.resolveOperands(obsOperands, obsTypes, loc, result.operands))
+    return failure();
+  if (parser.resolveOperands(timeOperands, timeTypes, loc, result.operands))
+    return failure();
+  if (parser.resolveOperands(destOpsOperands, destOpsTypes, loc,
+                             result.operands))
     return failure();
 
-  if (parser.parseTypeList(obsTypes))
-    return failure();
-  if (parser.resolveOperands(obsOperands, obsTypes, obsOperandsLoc,
-                             result.operands))
-    return failure();
-  if (parser.resolveOperands(destOpsOperands, destOpsTypes, destOpsOperandsLoc,
-                             result.operands))
-    return failure();
   result.addSuccessors(destSuccessor);
   result.addAttribute("operand_segment_sizes",
                       parser.getBuilder().getI32VectorAttr(
                           {static_cast<int32_t>(obsOperands.size()),
+                           static_cast<int32_t>(timeOperands.size()),
                            static_cast<int32_t>(destOpsOperands.size())}));
   return success();
 }
 
 static void print(OpAsmPrinter &p, llhd::WaitOp op) {
-  p << "llhd.wait";
-  p << " ";
+  p << op.getOperationName() << " ";
   p << op.obs();
-  p << " ";
-  p << "[";
+  if (!op.time().empty())
+    p << (op.obs().empty() ? "" : " ") << "for " << op.time() << ", ";
+  else if (!op.obs().empty())
+    p << ", ";
+  // else: there are no observed signals and no time argument, so don't print
+  // the comma
   p << op.dest();
-  if (!op.destOps().empty()) {
-    p << "(";
-    p << op.destOps();
-    p << " "
-      << ":";
-    p << " ";
-    p << op.destOps().getTypes();
-    p << ")";
-  }
-  p << "]";
-  p.printOptionalAttrDict(op.getAttrs(), /*elidedAttrs=*/{
-                              "operand_segment_sizes",
-                          });
-  p << " "
-    << ":";
-  p << " ";
-  p << op.obs().getTypes();
+  if (!op.destOps().empty())
+    p << "(" << op.destOps() << " : " << op.destOps().getTypes() << ")";
+  p.printOptionalAttrDict(op.getAttrs(),
+                          /* elidedAttrs= */ {"operand_segment_sizes"});
+  if (op.obs().empty() && op.time().empty())
+    return;
+  p << " : " << op.obs().getTypes()
+    << (op.time().empty() || op.obs().empty() ? "" : ", ")
+    << op.time().getTypes();
 }
+
+// Implement this operation for the BranchOpInterface
+Optional<OperandRange> llhd::WaitOp::getSuccessorOperands(unsigned index) {
+  assert(index == 0 && "invalid successor index");
+  return destOps();
+}
+
+// Implement this operation for the BranchOpInterface
+bool llhd::WaitOp::canEraseSuccessorOperand() { return true; }
 
 // Entity Op
 

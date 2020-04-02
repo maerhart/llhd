@@ -58,27 +58,27 @@ llhd.proc @test(!llhd.sig<i64>, !llhd.sig<i1>) -> (!llhd.sig<i1>) {
 llhd.proc @test2(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i1>) -> (%arg2 : !llhd.sig<i1>) {
 // CHECK-NEXT: %0 = llhd.const 5 : i64
 // CHECK-NEXT: %1 = llhd.const 3 : i64
-// CHECK-NEXT: llhd.wait %arg0 [^bb1(%0, %1 : i64, i64)] : !llhd.sig<i64>
+// CHECK-NEXT: llhd.wait %arg0, ^bb1(%0, %1 : i64, i64) : !llhd.sig<i64>
 // CHECK-NEXT: ^bb1(%2: i64, %3: i64):
     %var1 = llhd.const 5 : i64
     %tmp = llhd.const 3 : i64
-    llhd.wait %arg0 [^bb1(%var1, %tmp : i64, i64)] : !llhd.sig<i64>
+    llhd.wait %arg0, ^bb1(%var1, %tmp : i64, i64) : !llhd.sig<i64>
 ^bb1(%a : i64, %b : i64):
 // CHECK-NEXT: %4 = llhd.add(%2, %3) : (i64, i64) -> i64
-// CHECK-NEXT: llhd.wait %arg0, %arg1 [^bb1(%0, %4 : i64, i64)] : !llhd.sig<i64>, !llhd.sig<i1>
+// CHECK-NEXT: llhd.wait %arg0, %arg1, ^bb1(%0, %4 : i64, i64) : !llhd.sig<i64>, !llhd.sig<i1>
 // CHECK-NEXT: }
     %var3 = llhd.add(%a, %b) : (i64, i64) -> i64
-    llhd.wait %arg0, %arg1 [^bb1(%var1, %var3 : i64, i64)] : !llhd.sig<i64>, !llhd.sig<i1>
+    llhd.wait %arg0, %arg1, ^bb1(%var1, %var3 : i64, i64) : !llhd.sig<i64>, !llhd.sig<i1>
 }
 
 // two inputs, zero output, two basic blocks (one with zero arguments), custom syntax
 // CHECK-NEXT: llhd.proc @test3(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i1>) -> () {
 llhd.proc @test3(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i1>) -> () {
-// CHECK-NEXT: llhd.wait %arg0 [^bb1] : !llhd.sig<i64>
+// CHECK-NEXT: llhd.wait %arg0, ^bb1 : !llhd.sig<i64>
 // CHECK-NEXT: ^bb1:
-    llhd.wait %arg0 [^bb1] : !llhd.sig<i64>
+    llhd.wait %arg0, ^bb1 : !llhd.sig<i64>
 ^bb1:
-// CHECK-NEXT: llhd.wait %arg0, %arg1 [^bb1] : !llhd.sig<i64>, !llhd.sig<i1>
+// CHECK-NEXT: llhd.wait %arg0, %arg1, ^bb1 : !llhd.sig<i64>, !llhd.sig<i1>
 // CHECK-NEXT: }
-    llhd.wait %arg0, %arg1 [^bb1] : !llhd.sig<i64>, !llhd.sig<i1>
+    llhd.wait %arg0, %arg1, ^bb1 : !llhd.sig<i64>, !llhd.sig<i1>
 }

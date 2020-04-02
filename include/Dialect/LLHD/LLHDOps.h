@@ -3,6 +3,7 @@
 
 #include "Dialect/LLHD/LLHDDialect.h"
 #include "mlir/IR/StandardTypes.h"
+#include "mlir/Interfaces/ControlFlowInterfaces.h"
 #include "mlir/Interfaces/SideEffects.h"
 
 namespace mlir {
