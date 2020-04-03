@@ -185,6 +185,8 @@ def LLHD_WaitOp : LLHD_Op<"wait",
                          I32ElementsAttr:$operand_segment_sizes); 
      
     let successors = (successor AnySuccessor:$dest);
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
