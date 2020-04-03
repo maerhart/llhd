@@ -17,8 +17,8 @@ using namespace mlir;
 static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
   Attribute val;
   Type type;
-  if (parser.parseOptionalAttrDict(result.attributes) ||
-      parser.parseAttribute(val, "value", result.attributes))
+  if (parser.parseAttribute(val, "value", result.attributes) ||
+      parser.parseOptionalAttrDict(result.attributes))
     return failure();
   type = val.getType();
   return parser.addTypeToList(val.getType(), result.types);
@@ -26,11 +26,11 @@ static ParseResult parseConstOp(OpAsmParser &parser, OperationState &result) {
 
 static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
   printer << op.getOperationName() << " ";
-  printer.printOptionalAttrDict(op.getAttrs(), {"value"});
   // The custom time attribute is not printing the attribute type by default for
   // some reason. Work around by printing the attribute without type, explicitly
   // followed by the operation type
   printer.printAttributeWithoutType(op.valueAttr());
+  printer.printOptionalAttrDict(op.getAttrs(), {"value"});
   printer << " : ";
   printer.printType(op.getType());
 }
