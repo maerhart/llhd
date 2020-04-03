@@ -43,26 +43,51 @@ jobs:
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       run: mkdir llvm/build && mkdir llvm/install && cd llvm/build && cmake $GITHUB_WORKSPACE/llvm/llvm -DLLVM_BUILD_EXAMPLES=OFF -DLLVM_TARGETS_TO_BUILD="host" -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/llvm/install -DLLVM_ENABLE_PROJECTS='mlir' -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INSTALL_UTILS=ON -DCMAKE_LINKER=/usr/bin/lld -DLLVM_PARALLEL_LINK_JOBS=2 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_ASSERTIONS=ON && cmake --build . --target install
     - name: Configure cmake
-      run: mkdir llhd/build && cd llhd/build && cmake $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
+      run: mkdir llhd/build && cd llhd/build && cmake $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
     - name: Build and Test LLHD
       run: cd llhd/build && cmake --build . --target check-llhdc
-    - name: Generate documentation
-      run: cd llhd/build && cmake --build . --target mlir-doc
-    - name: Get doc target repo
+  
+  docgen:
+    name: Generate Docs
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Cache LLVM
+      id: cache-llvm
+      uses: actions/cache@v1
+      with:
+        path: llvm
+        key: ${{ runner.os }}-llvm-install-2
+    - name: Get LLHD
+      if: steps.cache-llvm.outputs.cache-hit == 'true'
+      uses: actions/checkout@v2
+      with:
+        path: 'llhd'
+    - name: Get doc repo
+      if: steps.cache-llvm.outputs.cache-hit == 'true'
       uses: actions/checkout@v2
       with:
         repository: rodonisi/llhd-docs
         token: ${{ secrets.PAT }}
         path: 'llhd-docs'
-    - name: Add doc to target repo
+    - name: Generate documentation
+      if: steps.cache-llvm.outputs.cache-hit == 'true'
       run: |
-        cat llhd-docs/frontmatter_template > llhd-docs/index.md
-        cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/index.md
-    - name: Commit and push doc to target repo
+        mkdir llhd/build  
+        cd llhd/build
+        cmake $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
+        cmake --build . --target mlir-doc
+    - name: Add doc to target repo
+      if: steps.cache-llvm.outputs.cache-hit == 'true'
+      run: |
+        cat llhd-docs/assets/templates/opdoc_frontmatter > llhd-docs/docs/LLHDOps.md
+        cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/docs/LLHDOps.md
+    - name: Commit and push to target repo
+      if: steps.cache-llvm.outputs.cache-hit == 'true'
       run: | 
         cd llhd-docs
         git config --local user.name "GitHub Push Action"
         git config --local user.mail "action@generate_docs.com"
-        git add index.md
+        git add docs/LLHDOps.md
         git commit -m "push docs" || echo "No changes to commit"
         git push
