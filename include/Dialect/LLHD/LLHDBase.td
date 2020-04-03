@@ -48,7 +48,7 @@ def LLHD_Type : AnyTypeOf<[LLHD_iN, LLHD_SigType, LLHD_TimeType]>;
 // LLHD time attr
 def LLHD_TimeAttr : Attr<CPred<"$_self.isa<TimeAttr>()">, "LLHD time attribute"> {
     let storageType= [{ TimeAttr }];
-    let returnType = [{ llvm::SmallVector<unsigned, 3> }];
+    let returnType = [{ llvm::ArrayRef<unsigned> }];
     let valueType = LLHD_TimeType;
 }
 
