@@ -230,17 +230,6 @@ Optional<OperandRange> llhd::WaitOp::getSuccessorOperands(unsigned index) {
 // Implement this operation for the BranchOpInterface
 bool llhd::WaitOp::canEraseSuccessorOperand() { return true; }
 
-// Bitwise Operations
-
-static void printBitwiseOp(Operation *op, OpAsmPrinter &p) {
-  p << op->getName() << ' ';
-  p.printOperands(op->getOperands());
-  p.printOptionalAttrDict(op->getAttrs());
-
-  // Now we can output only one type for all operands and the result.
-  p << " : " << op->getResult(0).getType();
-}
-
 // Entity Op
 
 /// Parse an argument list of an entity operation.

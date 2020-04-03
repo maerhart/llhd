@@ -81,7 +81,7 @@ class LLHD_BitwiseOp<string mnemonic, list<OpTrait> traits = []> :
     }];
 
     let printer = [{
-        return printBitwiseOp(this->getOperation(), p);
+        impl::printOneResultOp(this->getOperation(), p);
     }];
 }
 
