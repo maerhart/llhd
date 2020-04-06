@@ -56,13 +56,13 @@ jobs:
         path: 'llhd-docs'
     - name: Add doc to target repo
       run: |
-        cat llhd-docs/frontmatter_template > llhd-docs/index.md
-        cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/index.md
+        cat llhd-docs/assets/templates/opdoc_frontmatter > llhd-docs/docs/LLHDOps.md
+        cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/docs/LLHDOps.md
     - name: Commit and push doc to target repo
       run: | 
         cd llhd-docs
         git config --local user.name "GitHub Push Action"
         git config --local user.mail "action@generate_docs.com"
-        git add index.md
+        git add docs/LLHDOps.md
         git commit -m "push docs" || echo "No changes to commit"
         git push
