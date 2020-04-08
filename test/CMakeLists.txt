@@ -21,3 +21,4 @@ add_lit_testsuites(LLHDC ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS ${LLHDC_TEST_DEPS}
 )
 
+add_subdirectory(Examples)
