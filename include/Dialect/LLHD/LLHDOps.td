@@ -215,7 +215,7 @@ def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
 //=== Bitwise Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_NotOp : LLHD_BitwiseOp<"not", []> {
+def LLHD_NotOp : LLHD_ArithmeticOrBitwiseOp<"not", []> {
     let summary = "Bitwise NOT";
     let description = [{
         Takes an integer of any width or a nine-valued-logic (IEEE 1164) value 
@@ -249,7 +249,7 @@ def LLHD_NotOp : LLHD_BitwiseOp<"not", []> {
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
 }
 
-def LLHD_AndOp : LLHD_BitwiseOp<"and", [Commutative]> {
+def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
     let summary = "Bitwise AND";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
@@ -293,7 +293,7 @@ def LLHD_AndOp : LLHD_BitwiseOp<"and", [Commutative]> {
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
 }
 
-def LLHD_OrOp : LLHD_BitwiseOp<"or", [Commutative]> {
+def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
     let summary = "Bitwise OR";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
@@ -337,7 +337,7 @@ def LLHD_OrOp : LLHD_BitwiseOp<"or", [Commutative]> {
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
 }
 
-def LLHD_XorOp : LLHD_BitwiseOp<"xor", [Commutative]> {
+def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
     let summary = "Bitwise XOR";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
@@ -460,191 +460,52 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
 //=== Arithmetic Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_NegOp : LLHD_Op<"neg", [NoSideEffect, SameOperandsAndResultType]> {
+def LLHD_NegOp : LLHD_ArithmeticOrBitwiseOp<"neg", []> {
     let summary = "Negate a value.";
     let description = [{
+        The operand and result always have the same type. The type has to be a
+        signless integer of any width. Although, only signless integers are
+        allowed, this instruction applies two's complement negation of the
+        integer, basically treating it as a signed integer.
+
+        **Syntax:**
         ```
-        %result = llhd.neg(%value) : (T) -> T
+        neg-op ::= ssa-id `=` `llhd.neg` ssa-value attr-dict `:` type
         ```
-        * `T` must be `iN`
-        * `%value` is the input argument of type `T`.
-        * `%result` is of type `T`.
+
+        **Examples:**
+        ```
+        %0 = llhd.const 42 : i32
+        %1 = llhd.neg %0 : i32
+        ```
     }];
 
     let arguments = (ins LLHD_iN:$value);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
-def LLHD_AddOp : LLHD_Op<"add", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Add two values.";
+def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
+    let summary = "Signed modulo.";
     let description = [{
+        This instruction computes the signed modulo of two signless integers of
+        any width, treating the leading bit as sign. The operand and result
+        types always have to be the same.
+        To calculate the signed remainder of two integers, use `remi_signed`
+        from the standard dialect.
+
+        **Syntax:**
         ```
-        %result = llhd.add(%lhs, %rhs) : (T, T) -> T
+        smod-op ::= ssa-id `=` `llhd.smod` ssa-lhs `,` ssa-rhs attr-dict `:` type
         ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
+
+        **Examples:**
+        ```
+        %0 = llhd.const 9 : i4
+        %1 = llhd.const 4 : i4
+        %2 = llhd.smod %0, %1 : i4
+        ```
     }];
 
     let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_SubOp : LLHD_Op<"sub", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Subtract two values.";
-    let description = [{
-        ```
-        %result = llhd.sub(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_SMulOp : LLHD_Op<"smul", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Signed multiplication of two values.";
-    let description = [{
-        ```
-        %result = llhd.smul(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_UMulOp : LLHD_Op<"umul", [NoSideEffect, Commutative, SameOperandsAndResultType]> {
-    let summary = "Unsigned multiplication of two values.";
-    let description = [{
-        ```
-        %result = llhd.umul(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_SDivOp : LLHD_Op<"sdiv", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Signed division of two values.";
-    let description = [{
-        ```
-        %result = llhd.sdiv(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_UDivOp : LLHD_Op<"udiv", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Unsigned division of two values.";
-    let description = [{
-        ```
-        %result = llhd.udiv(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_SModOp : LLHD_Op<"smod", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Signed modulo of the signed division of two values.";
-    let description = [{
-        ```
-        %result = llhd.smod(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_UModOp : LLHD_Op<"umod", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Unsigned modulo of the unsigned division of two values.";
-    let description = [{
-        ```
-        %result = llhd.umod(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_SRemOp : LLHD_Op<"srem", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Signed reminder of the signed division two values.";
-    let description = [{
-        ```
-        %result = llhd.srem(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-}
-
-def LLHD_URemOp : LLHD_Op<"urem", [NoSideEffect, SameOperandsAndResultType]> {
-    let summary = "Unsigned reminder of the unsigned division two values.";
-    let description = [{
-        ```
-        %result = llhd.urem(%lhs, %rhs) : (T, T) -> T
-        ```
-        * `T` must be `iN`
-        * `%lhs` and `%rhs` are the left- and right-hand side arguments and must be of type `T`.
-        * `%result` is of type `T`.
-    }];
-
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
-    let results = (outs LLHD_iN);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
 }
 
 //===----------------------------------------------------------------------===//

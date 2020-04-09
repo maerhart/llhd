@@ -70,7 +70,7 @@ class LLHD_Op<string mnemonic, list<OpTrait> traits = []> :
     let printer = [{ ::print(p, *this); }];
 }
 
-class LLHD_BitwiseOp<string mnemonic, list<OpTrait> traits = []> :
+class LLHD_ArithmeticOrBitwiseOp<string mnemonic, list<OpTrait> traits = []> :
     Op<LLHD_Dialect, mnemonic, 
         !listconcat(traits, [NoSideEffect, SameOperandsAndResultType])> {
 
