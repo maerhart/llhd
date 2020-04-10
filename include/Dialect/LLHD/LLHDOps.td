@@ -384,64 +384,28 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
 def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     let summary = "Shifts a value to the left by a given amount.";
     let description = [{
+        The type of the base value and the hidden value must be the same, but
+        may differ in the number of bits or elements. The result always has the
+        same type (including width) of the base value.
         The instruction is transparent to signals and pointers. For example,
         passing a signal as argument will shift the underlying value and return 
         a signal to the shifted value.
+        Allowed (underlying) types are signless integers, nine-valued-logic values
+        and arrays. The shift amount has to be a signless integer. A shift amount
+        bigger than the number of bits or elements of the hidden value is undefined.
+        The hidden value is uncovered by non-zero shift amounts. E.g. consider
+        the four bit values `base = 0xf`, `hidden = 0xc` shifted by an amount of
+        three result in `0xe`.
 
+        **Syntax:**
         ```
-        %result = llhd.shl(%base, %hidden, %amount) : (T, Th, Ta) -> T
+        shl-op ::= ssa-id `=` `llhd.shl` ssa-base `,` ssa-hidden `,` ssa-amount attr-dict `:` `(` base-type `,` hidden-type `,` amount-type `)` `->` result-type
         ```
-        * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
-        * `Th` must be of the same type as T, but may have a different number 
-          of bits of elements.
-        * The maximum shift amount is determined by the number of bits or 
-          elements in `Th`.
-        * `Ta` must be `iN`.
-        * `%base` is the base value that is produced if the shift amount is 0, 
-          and must be of type `T`.
-        * `%hidden` is the hidden value that is uncovered by non-zero shift 
-          amounts, and must be of type `Th`.
-        * `%amount` is the unsigned shift amount and determines by how many 
-          positions the value is to be shifted. Must be of type `Ta`. Behavior 
-          for values `%amount > N` is undefined.
-        * `%result` is of type `T`.
-    }];
 
-    // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
-                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
-                         LLHD_iN:$amount);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
-
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
-
-    let verifier = [{ return ::verify(*this); }];
-}
-
-def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
-    let summary = "Shifts a value to the right by a given amount.";
-    let description = [{
-        The instruction is transparent to signals and pointers. For example, 
-        passing a signal as argument will shift the underlying value and return 
-        a signal to the shifted value.
-
+        **Examples:**
         ```
-        %result = llhd.shr(%base, %hidden, %amount) : (T, Th, Ta) -> T
+        %0 = llhd.shl %base, %hidden, %amount : (i4, i2, i2) -> i4
         ```
-        * `T` must be `iN` or `lN`, or an array; or a signal/pointer thereof.
-        * `Th` must be of the same type as T, but may have a different number 
-          of bits of elements.
-        * The maximum shift amount is determined by the number of bits or 
-          elements in `Th`.
-        * `Ta` must be `iN`.
-        * `%base` is the base value that is produced if the shift amount is 0, 
-          and must be of type `T`.
-        * `%hidden` is the hidden value that is uncovered by non-zero shift 
-          amounts, and must be of type `Th`.
-        * `%amount` is the unsigned shift amount and determines by how many 
-          positions the value is to be shifted. Must be of type `Ta`. Behavior 
-          for values `%amount > N` is undefined.
-        * `%result` is of type `T`.
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
@@ -450,7 +414,45 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
                          AnySignlessInteger:$amount);
     let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
 
-    let assemblyFormat = "`(` operands `)` attr-dict `:` `(` type(operands) `)` `->` type(results)";
+    let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
+
+    let verifier = [{ return ::verify(*this); }];
+}
+
+def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
+    let summary = "Shifts a value to the right by a given amount.";
+    let description = [{
+        The type of the base value and the hidden value must be the same, but
+        may differ in the number of bits or elements. The result always has the
+        same type (including width) of the base value.
+        The instruction is transparent to signals and pointers. For example,
+        passing a signal as argument will shift the underlying value and return 
+        a signal to the shifted value.
+        Allowed (underlying) types are signless integers, nine-valued-logic values
+        and arrays. The shift amount has to be a signless integer. A shift amount
+        bigger than the number of bits or elements of the hidden value is undefined.
+        The hidden value is uncovered by non-zero shift amounts. E.g. consider
+        the four bit values `base = 0xf`, `hidden = 0xc` shifted by an amount of
+        three result in `0x9`.
+
+        **Syntax:**
+        ```
+        shr-op ::= ssa-id `=` `llhd.shr` ssa-base `,` ssa-hidden `,` ssa-amount attr-dict `:` `(` base-type `,` hidden-type `,` amount-type `)` `->` result-type
+        ```
+
+        **Examples:**
+        ```
+        %0 = llhd.shr %base, %hidden, %amount : (i4, i2, i2) -> i4
+        ```
+    }];
+
+    // TODO: adjust type T and Th to include arrays and pointers
+    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
+                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
+                         AnySignlessInteger:$amount);
+    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
+
+    let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
     let verifier = [{ return ::verify(*this); }];
 }
