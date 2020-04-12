@@ -1,5 +1,5 @@
-#ifndef LLHD_SIM_SIGNALS_H
-#define LLHD_SIM_SIGNALS_H
+#ifndef LLHD_SIMULATOR_RUNTIME_SIGNALS_H
+#define LLHD_SIMULATOR_RUNTIME_SIGNALS_H
 
 //===----------------------------------------------------------------------===//
 // Data structures
@@ -62,4 +62,4 @@ void pop_queue(void *state);
 }
 #endif // __cplusplus
 
-#endif // LLHD_SIM_SIGNALS_H
+#endif // LLHD_SIMULATOR_RUNTIME_SIGNALS_H
