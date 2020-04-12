@@ -23,9 +23,10 @@ struct Slot;
 /// values and the event queue.
 struct State;
 
-} // namespace sim
-} // namespace llhd
-} // namespace mlir
+#else
+
+// Expose the state type to C interface.
+typedef struct State State;
 
 #endif
 
@@ -37,29 +38,30 @@ struct State;
 extern "C" {
 #endif // __cplusplus
 
-/// Probe a signal and return it's value as a generic pointer. Type information
-/// has to be inferred prior to use to determine what to bitcast the returned
-/// pointer to.
-void *probe_signal(void *state, int index);
+/// Probe a signal and return a pointer to the carried value.
+int *probe_signal(State *state, int index);
 
 /// Drive a value onto a signal.
-void drive_signal(void *state, int index, int value, int time);
+void drive_signal(State *state, int index, int value, int time);
 
 /// Allocate a new signal. The index of the new signal in the state's list of
 /// signals is returned.
-int alloc_signal(void *state, int init);
+int alloc_signal(State *state, int init);
 
-/// Initialize an empty state and return it as a generic pointer.
-void *init_state();
+/// Initialize an empty state and return a pointer to it.
+State *init_state();
 
 /// Return whether the queue is empty.
-int queue_empty(void *state);
+int queue_empty(State *state);
 
 /// Pop the head of the queue.
-void pop_queue(void *state);
+void pop_queue(State *state);
 
 #ifdef __cplusplus
 }
+} // namespace sim
+} // namespace llhd
+} // namespace mlir
 #endif // __cplusplus
 
 #endif // LLHD_SIMULATOR_RUNTIME_SIGNALS_H

@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-using namespace mlir::llhd::sim;
 //===----------------------------------------------------------------------===//
 // Data structures
 //===----------------------------------------------------------------------===//
@@ -90,53 +89,42 @@ public:
   std::vector<Signal> signals;
   std::vector<Slot> queue;
 };
-} // namespace sim
-} // namespace llhd
-} // namespace mlir
 
 //===----------------------------------------------------------------------===//
 // Runtime interfaces
 //===----------------------------------------------------------------------===//
 
-void *probe_signal(void *state, int index) {
-  State *casted = (State *)state;
-  Signal sig = casted->getSignal(index);
-  return (void *)&sig.value;
+int *probe_signal(State *state, int index) {
+  Signal sig = state->getSignal(index);
+  return &sig.value;
 }
 
-void drive_signal(void *state, int index, int value, int time) {
-  State *casted = (State *)state;
+void drive_signal(State *state, int index, int value, int time) {
   // update the signal value
-  casted->updateSignal(index, value);
+  state->updateSignal(index, value);
   // spawn new event
-  int ind = casted->pushQueue(time);
+  int ind = state->pushQueue(time);
   // dump trace
-  std::cout << casted->queue.at(0).time.dump() << "  " << index << "  " << value
+  std::cout << state->queue.at(0).time.dump() << "  " << index << "  " << value
             << "\n";
 }
 
-int alloc_signal(void *state, int init) {
-  State *casted = (State *)state;
+int alloc_signal(State *state, int init) {
   Signal newSig = Signal(init);
-  int newInd = casted->addSignal(newSig);
+  int newInd = state->addSignal(newSig);
   /// dump the initial value of the signal
-  std::cout << casted->time.dump() << "  " << newInd << "  " << init << "\n";
+  std::cout << state->time.dump() << "  " << newInd << "  " << init << "\n";
   // spawn a new event at time 0 to avoid segfaults on first step
-  casted->pushQueue(0);
+  state->pushQueue(0);
   return newInd;
 }
 
-void *init_state() {
-  State *state = new State();
-  return (void *)state;
-}
+State *init_state() { return new State; }
 
-int queue_empty(void *state) {
-  State *casted = (State *)state;
-  return casted->queue.empty();
-}
+int queue_empty(State *state) { return state->queue.empty(); }
 
-void pop_queue(void *state) {
-  State *casted = (State *)state;
-  casted->popQueue();
-}
+void pop_queue(State *state) { state->popQueue(); }
+
+} // namespace sim
+} // namespace llhd
+} // namespace mlir

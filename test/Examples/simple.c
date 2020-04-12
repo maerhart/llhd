@@ -4,7 +4,7 @@
 // @Foo
 void foo(void *state) {
   // %2 = llhd.prb %1 : !llhd.sig<i1> -> i1
-  int prb = *(int *)probe_signal(state, 0);
+  int prb = *probe_signal(state, 0);
   // %3 = llhd.not %2 : i1
   prb = !prb;
   // llhd.drv %1, %3, 1ns : !llhd.sig<i1>, i1, !llhd.time
@@ -12,7 +12,7 @@ void foo(void *state) {
 }
 
 void simulate() {
-  void *state = init_state();
+  State *state = init_state();
   // %0 = llhd.const 0 : i1
   // %1 = llhd.sig %0 : i1 -> !llhd.sig<i1>
   alloc_signal(state, 0);
