@@ -147,7 +147,13 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 
 def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
     let summary = "Dummy terminator";
-    // TODO: add description
+    let description = [{
+        The `"llhd.terminator"` op is a dummy terminator for an `EntityOp` unit. 
+        It provides no further meaning other than ensuring correct termination 
+        of an entitiy's region. This operation provides no custom syntax and 
+        should never explicitly appear in LLHD's custom syntax.
+    }];
+
     let parser = ?;
     let printer = ?;
 }
