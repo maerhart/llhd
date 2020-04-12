@@ -287,6 +287,9 @@ static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
 
   parseEntitySignature(parser, result, args, argTypes);
 
+  if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
+    return failure();
+
   auto *body = result.addRegion();
   parser.parseRegion(*body, args, argTypes);
   llhd::EntityOp::ensureTerminator(*body, parser.getBuilder(), result.location);
@@ -325,6 +328,9 @@ static void print(OpAsmPrinter &printer, llhd::EntityOp op) {
   printArgumentList(printer, ins);
   printer << " -> ";
   printArgumentList(printer, outs);
+  printer.printOptionalAttrDictWithKeyword(
+      op.getAttrs(),
+      /*elidedAttrs =*/{SymbolTable::getSymbolAttrName(), "ins"});
   printer.printRegion(op.body(), false, false);
 }
 

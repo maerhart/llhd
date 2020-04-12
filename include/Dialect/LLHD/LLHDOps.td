@@ -515,8 +515,34 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
 //===----------------------------------------------------------------------===//
 
 def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
-    let summary = "Define an LLHD entity.";
-    // TODO: add descriptioand change the main cmake file to install the td and def filesn
+    let summary = "Create an entity.";
+    let description = [{
+        The `llhd.entity` operation defines a new entity unit. An entity 
+        represents the data-flow description of how a circuit's output values
+        change in reaction to changing input values.  
+        An entity contains one region with a single block and an implicit 
+        `TerminatorOp` terminator. Both the block name and terminator are 
+        omitted in the custom syntax. No further blocks and control-flow are 
+        legal inside an entity.
+
+        **Custom syntax:**
+        ```
+        entity-op ::= `llhd.entity` entity-symbol `(` arg-list `)` `->` `(` out-list `)` attr-dict entity-region
+        ```
+
+        **Examples:**
+        ```
+        llhd.entity @Foo () -> () {
+            %0 = llhd.const 0 : i1
+            %toggle = llhd.sig %0 : i1 -> !llhd.sig<i1>
+            %1 = llhd.prb %toggle : !llhd.sig<i1> -> i1
+            %2 = llhd.not %1 : i1
+            %dt = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
+            llhd.drv %toggle, %2, %dt : !llhd.sig<i1>, i1, !llhd.time
+        }
+        ```
+    }];
+
     let arguments = (ins I64Attr:$ins);
     let regions = (region SizedRegion<1>:$body);
 }
