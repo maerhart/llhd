@@ -27,7 +27,7 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 
         **Examples:**
         
-        ```mlir
+        ```
         %0 = llhd.const 1 : i64
         %1 = llhd.const #llhd.time<1ns, 2d, 3d> : !llhd.time
         ```
@@ -57,7 +57,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
 
        **Examples:**
 
-       ```mlir
+       ```
        %init_i64 = llhd.const 123 : i64
        %sig_i64 = llhd.sig %init_64 : i64 -> !llhd.sig<i64>
 
@@ -93,7 +93,7 @@ def LLHD_PrbOp : LLHD_Op<"prb", []> {
 
         **Examples:***
         
-        ```mlir
+        ```
         %const_i1 = llhd.const 1 : i1
         %sig_i1 = llhd.sig %const_i1 : i1 -> !llhd.sig<i1>
         %prbd = llhd.prb %sig_i1 : !llhd.sig<i1> -> i1
@@ -124,7 +124,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 
         **Examples:**
 
-        ```mlir
+        ```
         %init = llhd.const 1 : i1
         %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
         %sig = llhd.sig %init : i1 -> !llhd.sig<i1>
