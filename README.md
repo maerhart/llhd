@@ -1,8 +1,7 @@
 # LLHD
 
 ![](https://github.com/maerhart/llhd/workflows/Build%20and%20Test/badge.svg?event=push)
-
-- [LLHD Documentation](https://rodonisi.github.io/llhd-docs/)
+[![LLHD Documentation](https://img.shields.io/badge/docs-link-informational)](https://rodonisi.github.io/llhd-docs/)
 
 Development repository for the LLHD Dialect. The repository depends on a build of llvm including mlir. Once the llvm and mlir are built setup configure the project using the following commands.
 
