@@ -3,7 +3,7 @@
 
 include "mlir/Interfaces/SideEffects.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
-include "LLHDBase.td"
+include "Dialect/LLHD/LLHDBase.td"
 
 //===----------------------------------------------------------------------===//
 // Constant Operation
