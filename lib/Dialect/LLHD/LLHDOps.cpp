@@ -237,8 +237,8 @@ bool llhd::WaitOp::canEraseSuccessorOperand() { return true; }
 /// respectively.
 static ParseResult
 parseArgumentList(OpAsmParser &parser,
-                  SmallVector<OpAsmParser::OperandType, 4> &args,
-                  SmallVector<Type, 4> &argTypes) {
+                  SmallVectorImpl<OpAsmParser::OperandType> &args,
+                  SmallVectorImpl<Type> &argTypes) {
   if (parser.parseLParen())
     return failure();
   do {
@@ -261,14 +261,12 @@ parseArgumentList(OpAsmParser &parser,
 /// (%arg0 : T0, %arg1 : T1, <...>) -> (%out0 : T0, %out1 : T1, <...>)
 static ParseResult
 parseEntitySignature(OpAsmParser &parser, OperationState &result,
-                     SmallVector<OpAsmParser::OperandType, 4> &args,
-                     SmallVector<Type, 4> &argTypes) {
+                     SmallVectorImpl<OpAsmParser::OperandType> &args,
+                     SmallVectorImpl<Type> &argTypes) {
   if (parseArgumentList(parser, args, argTypes))
     return failure();
-  // create integer attribute for number of inputs. Take directly from the
-  // size of the argument list parsed so far.
-  IntegerAttr insAttr =
-      IntegerAttr::get(IntegerType::get(64, result.getContext()), args.size());
+  // create the integer attribute with the number of inputs.
+  IntegerAttr insAttr = parser.getBuilder().getI64IntegerAttr(args.size());
   result.addAttribute("ins", insAttr);
   if (parser.parseArrow() || parseArgumentList(parser, args, argTypes))
     return failure();
@@ -289,6 +287,10 @@ static ParseResult parseEntityOp(OpAsmParser &parser, OperationState &result) {
 
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return failure();
+
+  auto type = parser.getBuilder().getFunctionType(argTypes, llvm::None);
+  result.addAttribute(mlir::llhd::EntityOp::getTypeAttrName(),
+                      TypeAttr::get(type));
 
   auto *body = result.addRegion();
   parser.parseRegion(*body, args, argTypes);
@@ -330,17 +332,46 @@ static void print(OpAsmPrinter &printer, llhd::EntityOp op) {
   printArgumentList(printer, outs);
   printer.printOptionalAttrDictWithKeyword(
       op.getAttrs(),
-      /*elidedAttrs =*/{SymbolTable::getSymbolAttrName(), "ins"});
+      /*elidedAttrs =*/{SymbolTable::getSymbolAttrName(),
+                        llhd::EntityOp::getTypeAttrName(), "ins"});
   printer.printRegion(op.body(), false, false);
 }
 
 static LogicalResult verify(llhd::EntityOp op) {
   Block &body = op.body().front();
   int64_t nIns = op.insAttr().getInt();
-  // check that there is exactly one flag for each argument
+  // check that there is at most one flag for each argument
   if (body.getArguments().size() < nIns) {
     op.emitError("Cannot have more inputs than arguments, expected at most ")
         << body.getArguments().size() << " but got: " << nIns;
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult mlir::llhd::EntityOp::verifyType() {
+  // Fail if function returns any values. An entity's outputs are specially
+  // marked arguments.
+  if (this->getNumResults() > 0) {
+    this->emitOpError("an entity cannot have return types.");
+    return failure();
+  }
+  // Check that all operands are of signal type
+  for (int i = 0, n = this->getNumFuncArguments(); i < n; i++) {
+    if (!llhd::SigType::kindof(this->getArgument(i).getType().getKind())) {
+      this->emitOpError("usage of invalid argument type. Got ")
+          << this->getArgument(i).getType() << ", expected LLHD signal type";
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult mlir::llhd::EntityOp::verifyBody() {
+  // Body must not be empty.
+  if (this->isExternal()) {
+    this->emitOpError("defining external entity with the entity instruction "
+                      "is not allowed, use the intended instruction instead.");
     return failure();
   }
   return success();

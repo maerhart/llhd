@@ -520,7 +520,7 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
 //=== Units
 //===----------------------------------------------------------------------===//
 
-def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
+def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
     let summary = "Create an entity.";
     let description = [{
         The `llhd.entity` operation defines a new entity unit. An entity 
@@ -551,6 +551,22 @@ def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, IsolatedFromAbove, SingleBlockImp
 
     let arguments = (ins I64Attr:$ins);
     let regions = (region SizedRegion<1>:$body);
+
+    let verifier = [{ return ::verify(*this); }];
+
+    let extraClassDeclaration = [{
+        friend class OpTrait::FunctionLike<EntityOp>;
+
+        /// Hooks for the input/output type enumeration in FunctionLike.
+        unsigned getNumFuncArguments() { return getType().getNumInputs(); }
+        unsigned getNumFuncResults() { return getType().getNumResults(); }
+
+        /// Hook for FunctionLike verifier.
+        LogicalResult verifyType();
+
+        /// Verifies the body of the function.
+        LogicalResult verifyBody();
+    }];
 }
 
 def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove]> {
