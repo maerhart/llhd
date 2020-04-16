@@ -21,7 +21,7 @@ void populateLLHDToLLVMConversionPatterns(LLVMTypeConverter &converter,
 std::unique_ptr<OperationPass<ModuleOp>> createConvertLLHDToLLVMPass();
 
 /// Register the LLHD to LLVM convesion pass.
-void initLLHDToLLVMPass() {
+inline void initLLHDToLLVMPass() {
 #define GEN_PASS_REGISTRATION
 #include "LLHDToLLVM/Passes.h.inc"
 }
