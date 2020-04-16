@@ -20,6 +20,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "Dialect/LLHD/LLHDDialect.h"
+#include "LLHDToLLVM/LLHDToLLVM.h"
+
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
@@ -73,6 +75,7 @@ int main(int argc, char **argv) {
   registerDialect<llhd::LLHDDialect>();
 
   // TODO: Register the LLHD passes here
+  llhd::initLLHDToLLVMPass();
 
   // Initialize LLVM
   InitLLVM y(argc, argv);

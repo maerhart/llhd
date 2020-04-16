@@ -5,6 +5,7 @@ set(LIBS
         ${conversion_libs}
         MLIROptLib
         MLIRLLHD
+        MLIRLLHDToLLVM
         )
 add_llvm_executable(llhdc llhdc.cpp)
 
