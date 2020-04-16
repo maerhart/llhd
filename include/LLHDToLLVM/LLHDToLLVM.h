@@ -8,7 +8,8 @@ namespace mlir {
 
 class ModuleOp;
 class LLVMTypeConverter;
-template <typename T> class OperationPass;
+template <typename T>
+class OperationPass;
 
 namespace llhd {
 
