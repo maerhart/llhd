@@ -90,6 +90,6 @@ jobs:
         cd llhd-docs
         git config --local user.name "GitHub Push Action"
         git config --local user.mail "action@generate_docs.com"
-        git add docs/LLHDOps.md docs/LLHDToLLVM.md
+        git add docs/LLHDOps.md docs/passes/LLHDToLLVM.md
         git commit -m "push docs" || echo "No changes to commit"
         git push
