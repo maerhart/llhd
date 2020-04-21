@@ -1,28 +1,38 @@
-#include "Simulator/Runtime/Signals.h"
 #include <stdio.h>
 
+typedef struct State State;
+
+State *init_state();
+int alloc_signal(State *, int index, int init);
+int *probe_signal(State *state, int index);
+void drive_signal(State *state, int index, int value, int time);
+void dump_changes(State *state);
+// int *probe_signal(State *state, int index, int init);
+
 // @Foo
-void foo(void *state) {
+void foo(State *state) {
+  // %0 = llhd.const 0 : i1
+  // %1 = llhd.sig %0 : i1 -> !llhd.sig<i1>
+  int index = alloc_signal(state, 0, 0);
   // %2 = llhd.prb %1 : !llhd.sig<i1> -> i1
-  int prb = *probe_signal(state, 0);
+  int *prb = probe_signal(state, index);
+  int load = *prb;
   // %3 = llhd.not %2 : i1
-  prb = !prb;
+  load = !load;
   // llhd.drv %1, %3, 1ns : !llhd.sig<i1>, i1, !llhd.time
-  drive_signal(state, 0, prb, 1);
+  drive_signal(state, 0, load, 1);
 }
 
 void simulate() {
   State *state = init_state();
-  // %0 = llhd.const 0 : i1
-  // %1 = llhd.sig %0 : i1 -> !llhd.sig<i1>
-  alloc_signal(state, 0);
   // run the simulation until no more events are queued, limited to 100 steps
   int i = 0;
-  do {
+  while (!queue_empty(state) && i < 100) {
+    dump_changes(state);
     pop_queue(state);
     foo(state);
     ++i;
-  } while (!queue_empty(state) && i < 100);
+  }
 }
 
 int main() {
