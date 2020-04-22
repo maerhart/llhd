@@ -9,6 +9,7 @@ configure_lit_site_cfg(
 set(LLHDC_TEST_DEPENDS
   FileCheck count not
   llhdc
+  llhd-translate
 )
 
 add_lit_testsuite(check-llhdc "Running the LLHDC regression tests"
