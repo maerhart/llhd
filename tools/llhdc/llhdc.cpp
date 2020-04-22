@@ -21,6 +21,7 @@
 
 #include "Dialect/LLHD/LLHDDialect.h"
 #include "LLHDToLLVM/LLHDToLLVM.h"
+#include "Transforms/Passes.h"
 
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
 #include "mlir/InitAllDialects.h"
@@ -75,6 +76,7 @@ int main(int argc, char **argv) {
   registerDialect<llhd::LLHDDialect>();
 
   // TODO: Register the LLHD passes here
+  llhd::createProcessLoweringPass();
   llhd::initLLHDToLLVMPass();
 
   // Initialize LLVM
