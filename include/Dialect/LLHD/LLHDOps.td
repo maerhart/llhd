@@ -325,8 +325,8 @@ def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
 
         | `or`  |  0  |  1  |
         |:-----:|:---:|:---:|
-        |   0   |  0  |  0  |
-        |   1   |  0  |  1  |
+        |   0   |  0  |  1  |
+        |   1   |  1  |  1  |
 
         **Truth Table for `lN`:**
 
@@ -370,8 +370,8 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
 
         | `xor` |  0  |  1  |
         |:-----:|:---:|:---:|
-        |   0   |  0  |  0  |
-        |   1   |  0  |  1  |
+        |   0   |  0  |  1  |
+        |   1   |  1  |  0  |
 
         **Truth Table for `lN`:**
 
