@@ -9,7 +9,7 @@ include "Dialect/LLHD/LLHDBase.td"
 // Constant Operation
 //===----------------------------------------------------------------------===//
 
-def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
+def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
     let summary = "Introduce a new constant.";
 
     let description = [{
@@ -35,6 +35,8 @@ def LLHD_ConstOp : LLHD_Op<"const", [NoSideEffect]> {
 
     let arguments = (ins AnyAttr:$value);
     let results = (outs LLHD_ElementType:$out);
+
+    let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -253,6 +255,7 @@ def LLHD_NotOp : LLHD_ArithmeticOrBitwiseOp<"not", []> {
     }];
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
+    let hasFolder = 1;
 }
 
 def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
@@ -297,6 +300,7 @@ def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let hasFolder = 1;
 }
 
 def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
@@ -341,6 +345,7 @@ def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs,
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let hasFolder = 1;
 }
 
 def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
@@ -385,6 +390,7 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
 
     let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
                          AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let hasFolder = 1;
 }
 
 def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
@@ -423,6 +429,8 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
     let verifier = [{ return ::verify(*this); }];
+
+    let hasFolder = 1;
 }
 
 def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
@@ -461,6 +469,8 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
     let verifier = [{ return ::verify(*this); }];
+
+    let hasFolder = 1;
 }
 
 
@@ -489,6 +499,7 @@ def LLHD_NegOp : LLHD_ArithmeticOrBitwiseOp<"neg", []> {
     }];
 
     let arguments = (ins LLHD_iN:$value);
+    let hasFolder = 1;
 }
 
 def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
@@ -514,6 +525,7 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
     }];
 
     let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//

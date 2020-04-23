@@ -30,6 +30,9 @@ public:
   /// Print an attribute registered to this dialect
   void printAttribute(Attribute attr,
                       DialectAsmPrinter &printer) const override;
+
+  Operation *materializeConstant(OpBuilder &builder, Attribute value, Type type,
+                                 Location loc);
 };
 
 //===----------------------------------------------------------------------===//

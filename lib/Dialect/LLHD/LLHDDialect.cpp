@@ -1,5 +1,6 @@
 #include "Dialect/LLHD/LLHDDialect.h"
 #include "Dialect/LLHD/LLHDOps.h"
+#include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
@@ -19,6 +20,11 @@ LLHDDialect::LLHDDialect(mlir::MLIRContext *context)
 #define GET_OP_LIST
 #include "Dialect/LLHD/LLHDOps.cpp.inc"
       >();
+}
+
+Operation *LLHDDialect::materializeConstant(OpBuilder &builder, Attribute value,
+                                            Type type, Location loc) {
+  return builder.create<llhd::ConstOp>(loc, type, value);
 }
 
 //===----------------------------------------------------------------------===//

@@ -1,4 +1,6 @@
 #include "Dialect/LLHD/LLHDOps.h"
+#include "mlir/Dialect/CommonFolders.h"
+#include "mlir/IR/Matchers.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/Region.h"
@@ -33,6 +35,11 @@ static void print(OpAsmPrinter &printer, llhd::ConstOp op) {
   printer.printOptionalAttrDict(op.getAttrs(), {"value"});
   printer << " : ";
   printer.printType(op.getType());
+}
+
+OpFoldResult llhd::ConstOp::fold(ArrayRef<Attribute> operands) {
+  assert(operands.empty() && "const has no operands");
+  return value();
 }
 
 // Sig Op
@@ -81,6 +88,143 @@ static LogicalResult verify(llhd::DrvOp op) {
            << op.value().getType();
 
   return success();
+}
+
+//===----------------------------------------------------------------------===//
+// NegOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::NegOp::fold(ArrayRef<Attribute> operands) {
+  return constFoldUnaryOp<IntegerAttr>(operands, [](APInt a) { return -a; });
+}
+
+//===----------------------------------------------------------------------===//
+// SModOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::SModOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.smod(x, 1) -> 0
+  if (matchPattern(rhs(), m_One()))
+    return Builder(getContext()).getZeroAttr(getType());
+
+  /// llhd.smod(0, x) -> 0
+  if (matchPattern(lhs(), m_Zero()))
+    return Builder(getContext()).getZeroAttr(getType());
+
+  /// llhs.smod(x,x) -> 0
+  if (lhs() == rhs())
+    return Builder(getContext()).getZeroAttr(getType());
+
+  return constFoldBinaryOp<IntegerAttr>(operands, [](APInt lhs, APInt rhs) {
+    APInt result = lhs.srem(rhs);
+    if ((lhs.isNegative() && rhs.isNonNegative()) ||
+        (lhs.isNonNegative() && rhs.isNegative())) {
+      result += rhs;
+    }
+    return result;
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// NotOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::NotOp::fold(ArrayRef<Attribute> operands) {
+  return constFoldUnaryOp<IntegerAttr>(operands, [](APInt a) { return ~a; });
+}
+
+//===----------------------------------------------------------------------===//
+// AndOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::AndOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.and(x, 0) -> 0
+  if (matchPattern(rhs(), m_Zero()))
+    return rhs();
+
+  /// llhd.and(x, all_bits_set) -> x
+  if (matchPattern(rhs(), constant_int_all_ones_matcher()))
+    return lhs();
+
+  // llhd.and(x, x) -> x
+  if (rhs() == lhs())
+    return rhs();
+
+  return constFoldBinaryOp<IntegerAttr>(operands,
+                                        [](APInt a, APInt b) { return a & b; });
+}
+
+//===----------------------------------------------------------------------===//
+// OrOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::OrOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.or(x, 0) -> x
+  if (matchPattern(rhs(), m_Zero()))
+    return lhs();
+
+  /// llhd.or(x, all_bits_set) -> all_bits_set
+  if (matchPattern(rhs(), constant_int_all_ones_matcher()))
+    return rhs();
+
+  // llhd.or(x, x) -> x
+  if (rhs() == lhs())
+    return rhs();
+
+  return constFoldBinaryOp<IntegerAttr>(operands,
+                                        [](APInt a, APInt b) { return a | b; });
+}
+
+//===----------------------------------------------------------------------===//
+// XorOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::XorOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.xor(x, 0) -> x
+  if (matchPattern(rhs(), m_Zero()))
+    return lhs();
+
+  /// llhs.xor(x,x) -> 0
+  if (lhs() == rhs())
+    return Builder(getContext()).getZeroAttr(getType());
+
+  return constFoldBinaryOp<IntegerAttr>(operands,
+                                        [](APInt a, APInt b) { return a ^ b; });
+}
+
+//===----------------------------------------------------------------------===//
+// ShlOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::ShlOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.shl(base, hidden, 0) -> base
+  if (matchPattern(amount(), m_Zero()))
+    return base();
+
+  return constFoldTernaryOp<IntegerAttr>(
+      operands, [](APInt base, APInt hidden, APInt amt) {
+        base <<= amt;
+        base += hidden.getHiBits(amt.getZExtValue());
+        return base;
+      });
+}
+
+//===----------------------------------------------------------------------===//
+// ShrOp
+//===----------------------------------------------------------------------===//
+
+OpFoldResult llhd::ShrOp::fold(ArrayRef<Attribute> operands) {
+  /// llhd.shl(base, hidden, 0) -> base
+  if (matchPattern(amount(), m_Zero()))
+    return base();
+
+  return constFoldTernaryOp<IntegerAttr>(
+      operands, [](APInt base, APInt hidden, APInt amt) {
+        base = base.getHiBits(base.getBitWidth() - amt.getZExtValue());
+        hidden = hidden.getLoBits(amt.getZExtValue());
+        hidden <<= base.getBitWidth() - amt.getZExtValue();
+        return base + hidden;
+      });
 }
 
 // Wait Terminator

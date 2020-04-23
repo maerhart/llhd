@@ -15,6 +15,8 @@ def LLHD_Dialect : Dialect {
     }];
 
     let cppNamespace = "llhd";
+
+    let hasConstantMaterializer = 1;
 }
 
 //===----------------------------------------------------------------------===//
