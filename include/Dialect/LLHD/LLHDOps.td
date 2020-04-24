@@ -43,7 +43,7 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
 //=== Signal Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
+def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
     let summary = "Create a signal.";
 
     let description = [{
@@ -79,7 +79,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [NoSideEffect]> {
     let verifier = [{ return ::verify(*this); }];
 }
 
-def LLHD_PrbOp : LLHD_Op<"prb", []> {
+def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
     let summary = "Probe a signal.";
 
     let description = [{
@@ -147,7 +147,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 //=== Control Flow Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator]> {
+def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator, HasParent<"EntityOp">]> {
     let summary = "Dummy terminator";
     let description = [{
         The `"llhd.terminator"` op is a dummy terminator for an `EntityOp` unit. 

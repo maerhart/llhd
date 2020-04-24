@@ -149,20 +149,17 @@ func @check_shr(%base : i4, %hidden : i8) -> (i4, i4) {
 }
 
 // CHECK-LABEL: @const_hoisting
-func @const_hoisting() {
-    // CHECK-NEXT: %[[C0:.*]] = llhd.const 1 : i32
-    // CHECK-NEXT: %[[C1:.*]] = llhd.const -1 : i32
+// CHECK-SAME: %[[SIG:.*]]: !llhd.sig<i32>
+func @const_hoisting(%sig : !llhd.sig<i32>) {
+    // CHECK-NEXT: %[[C0:.*]] = llhd.const -1 : i32
     // CHECK-NEXT: %[[TIME:.*]] = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
     // CHECK-NEXT: br ^[[BB:.*]]
     br ^bb1
 // CHECK-NEXT: ^[[BB]]
 ^bb1:
-    %0 = llhd.const 1 : i32
-    %1 = llhd.const -1 : i32
-    %2 = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-    // CHECK-NEXT: %[[SIG:.*]] = llhd.sig %[[C0]] : i32 -> !llhd.sig<i32>
-    %sig = llhd.sig %0 : i32 -> !llhd.sig<i32>
-    // CHECK-NEXT: llhd.drv %[[SIG]], %[[C1]], %[[TIME]] : !llhd.sig<i32>, i32, !llhd.time
-    llhd.drv %sig, %1, %2 : !llhd.sig<i32>, i32, !llhd.time
+    %0 = llhd.const -1 : i32
+    %1 = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
+    // CHECK-NEXT: llhd.drv %[[SIG]], %[[C0]], %[[TIME]] : !llhd.sig<i32>, i32, !llhd.time
+    llhd.drv %sig, %0, %1 : !llhd.sig<i32>, i32, !llhd.time
     br ^bb1
 }
