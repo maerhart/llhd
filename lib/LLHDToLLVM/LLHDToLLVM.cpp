@@ -285,7 +285,7 @@ private:
 };
 
 //===----------------------------------------------------------------------===//
-// Arithmetic conversions
+// Bitwise conversions
 //===----------------------------------------------------------------------===//
 
 /// Convert an `llhd.not` operation. The result is an `llvm.xor` operation,
@@ -318,14 +318,18 @@ struct NotOpConversion : public ConvertToLLVMPattern {
   }
 };
 
+using AndOpConversion = OneToOneConvertToLLVMPattern<llhd::AndOp, LLVM::AndOp>;
+using OrOpConversion = OneToOneConvertToLLVMPattern<llhd::OrOp, LLVM::OrOp>;
+using XorOpConversion = OneToOneConvertToLLVMPattern<llhd::XorOp, LLVM::XOrOp>;
+
 //===----------------------------------------------------------------------===//
 // Constant conversions
 //===----------------------------------------------------------------------===//
 
 /// Lower an LLHD constant operation to LLVM. Time constant are treated as a
-/// special case, by just erasing them. Operations that use time constants are
-/// assumed to extract and convert the elements they require. Remaining const
-/// types are lowered to an equivalent `llvm.mlir.constant` operation.
+/// special case, by just erasing them. Operations that use time constants
+/// are assumed to extract and convert the elements they require. Remaining
+/// const types are lowered to an equivalent `llvm.mlir.constant` operation.
 struct ConstOpConversion : public ConvertToLLVMPattern {
   explicit ConstOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
       : ConvertToLLVMPattern(llhd::ConstOp::getOperationName(), ctx,
@@ -365,8 +369,10 @@ void llhd::populateLLHDToLLVMConversionPatterns(
 
   // constant conversion patterns
   patterns.insert<ConstOpConversion>(ctx, converter);
-  // arithmetic conversion patterns
+  // bitwise conversion patterns
   patterns.insert<NotOpConversion>(ctx, converter);
+  // patterns.insert<NotOpConversion, AndOpConversion>(ctx, converter);
+  patterns.insert<AndOpConversion, OrOpConversion, XorOpConversion>(converter);
   // unit conversion patterns
   patterns.insert<EntityOpConversion, TerminatorOpConversion>(ctx, converter);
   // signal conversion patterns
