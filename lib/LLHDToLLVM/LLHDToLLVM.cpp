@@ -302,12 +302,16 @@ struct NotOpConversion : public ConvertToLLVMPattern {
     OperandAdaptor<NotOp> transformed(operands);
     // get `llhd.not` operation
     auto notOp = cast<NotOp>(op);
+    // get integer width
+    unsigned width = notOp.getType().dyn_cast<IntegerType>().getWidth();
     // get llvm types
-    auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
+    auto iTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), width);
 
-    // get rhs operand (all ones)
-    auto rhs = rewriter.getBoolAttr(true);
-    auto rhsConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), i1Ty, rhs);
+    // get mask operand
+    APInt mask(width, 0);
+    mask.setAllBits();
+    auto rhs = rewriter.getIntegerAttr(rewriter.getIntegerType(width), mask);
+    auto rhsConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), iTy, rhs);
 
     // replace original op with llvm equivalent
     rewriter.replaceOpWithNewOp<LLVM::XOrOp>(
