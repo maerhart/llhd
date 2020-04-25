@@ -86,12 +86,14 @@ jobs:
         cat llhd/build/docs/Dialect/llhd.md >> llhd-docs/docs/LLHDOps.md
         cat llhd-docs/assets/templates/convdoc_frontmatter > llhd-docs/docs/passes/LLHDToLLVM.md
         cat llhd/build/docs/Passes/LLHDToLLVM.md >> llhd-docs/docs/passes/LLHDToLLVM.md
+        cat llhd-docs/assets/templates/transdoc_frontmatter > llhd-docs/docs/passes/Transformations.md
+        cat llhd/build/docs/Passes/Transformations.md >> llhd-docs/docs/passes/Transformations.md
     - name: Commit and push to target repo
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       run: | 
         cd llhd-docs
         git config --local user.name "GitHub Push Action"
         git config --local user.mail "action@generate_docs.com"
-        git add docs/LLHDOps.md docs/passes/LLHDToLLVM.md
+        git add docs/LLHDOps.md docs/passes/LLHDToLLVM.md docs/passes/Transformations.md
         git commit -m "push docs" || echo "No changes to commit"
         git push
