@@ -35,7 +35,7 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
     }];
 
     let arguments = (ins AnyAttr:$value);
-    let results = (outs LLHD_ElementType:$out);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_TimeType]>:$out);
 
     let hasFolder = 1;
 }
@@ -73,7 +73,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
        carrying an `i1` value with initial value of 1.
     }];
 
-    let arguments = (ins LLHD_ElementType:$init);
+    let arguments = (ins AnySignlessInteger:$init);
     let results = (outs LLHD_SigType);
 
     let assemblyFormat = "$init attr-dict `:` type($init) `->` type(results)";
@@ -105,7 +105,7 @@ def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
     }];
 
     let arguments = (ins LLHD_SigType:$signal);
-    let results = (outs LLHD_ElementType);
+    let results = (outs AnySignlessInteger);
 
     let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type(results)";
 
@@ -138,7 +138,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
         ```
     }];
 
-    let arguments = (ins LLHD_SigType:$signal, LLHD_ElementType:$value, LLHD_TimeType:$time);
+    let arguments = (ins LLHD_SigType:$signal, AnySignlessInteger:$value, LLHD_TimeType:$time);
 
     let assemblyFormat = "operands attr-dict `:` type(operands)";
 
@@ -256,7 +256,7 @@ def LLHD_NotOp : LLHD_ArithmeticOrBitwiseOp<"not", []> {
         |       |  U  |  X  |  1  |  0  |  X  |  X  |  1  |  0  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$value);
+    let arguments = (ins AnySignlessInteger:$value);
     let hasFolder = 1;
 }
 
@@ -300,8 +300,8 @@ def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
         |   -   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
-                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnySignlessInteger:$lhs, 
+                         AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
 
@@ -345,8 +345,8 @@ def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
         |   -   |  U  |  X  |  X  |  1  |  X  |  X  |  X  |  1  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs,
-                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnySignlessInteger:$lhs,
+                         AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
 
@@ -390,8 +390,8 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
         |   -   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
     }];
 
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN]>:$lhs, 
-                         AnyTypeOf<[LLHD_iN, LLHD_lN]>:$rhs);
+    let arguments = (ins AnySignlessInteger:$lhs, 
+                         AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
 
@@ -423,10 +423,10 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
-                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base, 
+                         AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
                          AnySignlessInteger:$amount);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
 
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
@@ -463,10 +463,10 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$base, 
-                         AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$hidden,
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base, 
+                         AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
                          AnySignlessInteger:$amount);
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN, LLHD_SigType]>:$result);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
 
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
@@ -500,7 +500,7 @@ def LLHD_NegOp : LLHD_ArithmeticOrBitwiseOp<"neg", []> {
         ```
     }];
 
-    let arguments = (ins LLHD_iN:$value);
+    let arguments = (ins AnySignlessInteger:$value);
     let hasFolder = 1;
 }
 
@@ -526,7 +526,7 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
         ```
     }];
 
-    let arguments = (ins LLHD_iN:$lhs, LLHD_iN:$rhs);
+    let arguments = (ins AnySignlessInteger:$lhs, AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
 

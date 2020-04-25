@@ -26,22 +26,8 @@ def LLHD_Dialect : Dialect {
 // LLHD sig type
 def LLHD_SigType : Type<CPred<"$_self.isa<SigType>()">, "LLHD sig type">;
 
-// Signed or unsigned integer of any width
-// TODO: why does "def LLHD_iN : AnyInteger;" not work?
-def LLHD_iN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
-
-// TODO: replace this with nine-valued logic type, it's just a placeholder such
-//       that the instructions don't have to be updated
-def LLHD_lN : Type<CPred<"$_self.isa<IntegerType>()">, "integer">;
-
 // LLHD Time Type
 def LLHD_TimeType : Type<CPred<"$_self.isa<TimeType>()">, "LLHD time type">;
-
-// LLHD elementary types
-def LLHD_ElementType : AnyTypeOf<[LLHD_iN, LLHD_TimeType]>;
-
-// LLHD full list of types
-def LLHD_Type : AnyTypeOf<[LLHD_iN, LLHD_SigType, LLHD_TimeType]>;
 
 //===----------------------------------------------------------------------===//
 // LLDH attribute definitions
@@ -76,7 +62,7 @@ class LLHD_ArithmeticOrBitwiseOp<string mnemonic, list<OpTrait> traits = []> :
     Op<LLHD_Dialect, mnemonic, 
         !listconcat(traits, [NoSideEffect, SameOperandsAndResultType])> {
 
-    let results = (outs AnyTypeOf<[LLHD_iN, LLHD_lN]>);
+    let results = (outs AnySignlessInteger);
 
     let parser = [{
         return impl::parseOneResultSameOperandTypeOp(parser, result);
