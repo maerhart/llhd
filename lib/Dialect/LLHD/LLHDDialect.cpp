@@ -60,7 +60,7 @@ Operation *LLHDDialect::materializeConstant(OpBuilder &builder, Attribute value,
 
 /// Parse a signal type.
 /// Syntax: sig ::= !llhd.sig<type>
-Type parseSigType(DialectAsmParser &parser) {
+static Type parseSigType(DialectAsmParser &parser) {
   Type underlyingType;
   if (parser.parseLess())
     return Type();
@@ -101,7 +101,7 @@ Type LLHDDialect::parseType(DialectAsmParser &parser) const {
 
 /// Print a signal type with custom syntax:
 /// type ::= !sig.type<underlying-type>
-void printSigType(SigType sig, DialectAsmPrinter &printer) {
+static void printSigType(SigType sig, DialectAsmPrinter &printer) {
   printer << sig.getKeyword() << "<";
   printer.printType(sig.getUnderlyingType());
   printer << ">";
@@ -131,7 +131,7 @@ void LLHDDialect::printType(Type type, DialectAsmPrinter &printer) const {
 
 /// Parse a time attribute with the custom syntax:
 /// time ::= #llhd.time<time time_unit, delta d, epsilon e>
-Attribute parseTimeAttribute(DialectAsmParser &parser, Type type) {
+static Attribute parseTimeAttribute(DialectAsmParser &parser, Type type) {
   if (parser.parseLess())
     return Attribute();
 
@@ -181,7 +181,7 @@ Attribute LLHDDialect::parseAttribute(DialectAsmParser &parser,
 //===----------------------------------------------------------------------===//
 
 /// Print an LLHD time attribute.
-void printTimeAttribute(TimeAttr attr, DialectAsmPrinter &printer) {
+static void printTimeAttribute(TimeAttr attr, DialectAsmPrinter &printer) {
   printer << attr.getKeyword() << "<";
   printer << attr.getTime() << attr.getTimeUnit() << ", ";
   printer << attr.getDelta() << "d, ";
