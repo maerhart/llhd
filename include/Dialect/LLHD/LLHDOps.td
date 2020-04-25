@@ -3,6 +3,7 @@
 
 include "mlir/Interfaces/SideEffects.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/Interfaces/CallInterfaces.td"
 include "Dialect/LLHD/LLHDBase.td"
 
 //===----------------------------------------------------------------------===//
@@ -533,7 +534,7 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
 //=== Units
 //===----------------------------------------------------------------------===//
 
-def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">]> {
+def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">, DeclareOpInterfaceMethods<CallableOpInterface>]> {
     let summary = "Create an entity.";
     let description = [{
         The `llhd.entity` operation defines a new entity unit. An entity 
@@ -582,7 +583,7 @@ def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, 
     }];
 }
 
-def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove]> {
+def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove, DeclareOpInterfaceMethods<CallableOpInterface>]> {
     let summary = "";
     // TODO: add description
     let description = [{

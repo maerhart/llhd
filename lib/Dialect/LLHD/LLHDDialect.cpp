@@ -2,11 +2,37 @@
 #include "Dialect/LLHD/LLHDOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
+#include "mlir/Transforms/InliningUtils.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 
 using namespace mlir;
 using namespace mlir::llhd;
+
+//===----------------------------------------------------------------------===//
+// LLHDDialect Interfaces
+//===----------------------------------------------------------------------===//
+
+namespace {
+/// This class defines the interface for handling inlining with LLHD operations.
+struct LLHDInlinerInterface : public DialectInlinerInterface {
+  using DialectInlinerInterface::DialectInlinerInterface;
+
+  //===--------------------------------------------------------------------===//
+  // Analysis Hooks
+  //===--------------------------------------------------------------------===//
+
+  /// All operations within LLHD can be inlined.
+  bool isLegalToInline(Operation *, Region *,
+                       BlockAndValueMapping &) const final {
+    return true;
+  }
+
+  bool isLegalToInline(Region *, Region *, BlockAndValueMapping &) const final {
+    return true;
+  }
+};
+} // end anonymous namespace
 
 //===----------------------------------------------------------------------===//
 // LLHD Dialect
@@ -20,6 +46,7 @@ LLHDDialect::LLHDDialect(mlir::MLIRContext *context)
 #define GET_OP_LIST
 #include "Dialect/LLHD/LLHDOps.cpp.inc"
       >();
+  addInterfaces<LLHDInlinerInterface>();
 }
 
 Operation *LLHDDialect::materializeConstant(OpBuilder &builder, Attribute value,

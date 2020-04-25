@@ -9,6 +9,7 @@ set(LIBS
 
 add_llvm_library(MLIRLLHDTransforms
   ProcessLoweringPass.cpp
+  FunctionEliminationPass.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/include/Transforms

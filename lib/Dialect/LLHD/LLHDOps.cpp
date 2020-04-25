@@ -521,6 +521,14 @@ LogicalResult mlir::llhd::EntityOp::verifyBody() {
   return success();
 }
 
+Region *llhd::EntityOp::getCallableRegion() {
+  return isExternal() ? nullptr : &getBody();
+}
+
+ArrayRef<Type> llhd::EntityOp::getCallableResults() {
+  return getType().getResults();
+}
+
 // Proc Operation
 LogicalResult mlir::llhd::ProcOp::verifyType() {
   // Fail if function returns more than zero values. This is because the outputs
@@ -682,6 +690,14 @@ static void print(OpAsmPrinter &printer, llhd::ProcOp op) {
   printProcArguments(printer, op.getOperation(), type.getInputs(),
                      op.insAttr().getInt());
   printer.printRegion(op.body(), false, true);
+}
+
+Region *llhd::ProcOp::getCallableRegion() {
+  return isExternal() ? nullptr : &getBody();
+}
+
+ArrayRef<Type> llhd::ProcOp::getCallableResults() {
+  return getType().getResults();
 }
 
 // Shift Operations

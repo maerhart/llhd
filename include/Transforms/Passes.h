@@ -12,6 +12,8 @@ namespace llhd {
 
 std::unique_ptr<OperationPass<ModuleOp>> createProcessLoweringPass();
 
+std::unique_ptr<OperationPass<ModuleOp>> createFunctionEliminationPass();
+
 /// Register the LLHD Transformation passes.
 inline void initLLHDTransformationPasses() {
 #define GEN_PASS_REGISTRATION
