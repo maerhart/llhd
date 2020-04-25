@@ -7,7 +7,16 @@
 namespace mlir {
 namespace llhd {
 
+#define GEN_PASS_CLASSES
+#include "Transforms/Passes.h.inc"
+
 std::unique_ptr<OperationPass<ModuleOp>> createProcessLoweringPass();
+
+/// Register the LLHD Transformation passes.
+inline void initLLHDTransformationPasses() {
+#define GEN_PASS_REGISTRATION
+#include "Transforms/Passes.h.inc"
+}
 
 } // namespace llhd
 } // namespace mlir

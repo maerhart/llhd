@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
   registerDialect<llhd::LLHDDialect>();
 
   // TODO: Register the LLHD passes here
-  llhd::createProcessLoweringPass();
+  llhd::initLLHDTransformationPasses();
   llhd::initLLHDToLLVMPass();
 
   // Initialize LLVM

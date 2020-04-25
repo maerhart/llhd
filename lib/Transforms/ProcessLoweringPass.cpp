@@ -7,7 +7,7 @@ using namespace mlir;
 namespace {
 
 struct ProcessLoweringPass
-    : public PassWrapper<ProcessLoweringPass, OperationPass<ModuleOp>> {
+    : public llhd::ProcessLoweringBase<ProcessLoweringPass> {
   void runOnOperation() override;
 };
 
@@ -125,6 +125,3 @@ std::unique_ptr<OperationPass<ModuleOp>>
 mlir::llhd::createProcessLoweringPass() {
   return std::make_unique<ProcessLoweringPass>();
 }
-
-static PassRegistration<ProcessLoweringPass>
-    pass("llhd-process-lowering", "Lower processes to entities.");

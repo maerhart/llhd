@@ -12,6 +12,10 @@ add_llvm_library(MLIRLLHDTransforms
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/include/Transforms
+
+  DEPENDS
+  MLIRLLHDOpsIncGen
+  MLIRLLHDTransformsIncGen
 )
 target_link_libraries(MLIRLLHDTransforms ${LIBS})
 
