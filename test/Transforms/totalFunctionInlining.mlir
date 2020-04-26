@@ -35,12 +35,7 @@ llhd.proc @check_proc_inline(%arg : !llhd.sig<i1>) -> (%out : !llhd.sig<i32>) {
     // CHECK-NEXT: %{{.*}} = llhd.const
     // CHECK-NEXT: %{{.*}} = llhd.const
     // CHECK-NEXT: %{{.*}} = llhd.prb
-    // CHECK-NEXT: cond_br %{{.*}}, ^{{.*}}, ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
-    // CHECK-NEXT: br ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
-    // CHECK-NEXT: br ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
+    // CHECK-NEXT: %{{.*}} = select
     // CHECK-NEXT: llhd.drv
     // CHECK-NEXT: llhd.halt
     // CHECK-NEXT: }
