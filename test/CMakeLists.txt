@@ -10,6 +10,7 @@ set(LLHDC_TEST_DEPENDS
   FileCheck count not
   llhdc
   llhd-translate
+  llhd-sim
 )
 
 add_lit_testsuite(check-llhdc "Running the LLHDC regression tests"
