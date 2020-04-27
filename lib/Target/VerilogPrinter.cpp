@@ -106,9 +106,9 @@ mlir::llhd::VerilogPrinter::printSignedBinaryOp(Operation *inst, char opSymbol,
 LogicalResult mlir::llhd::VerilogPrinter::printUnaryOp(Operation *inst,
                                                        char opSymbol,
                                                        unsigned indentAmount) {
-  // Check that the operation is indeed a binary operation
+  // Check that the operation is indeed a unary operation
   if (inst->getNumOperands() != 1) {
-    emitError(inst->getLoc(), "This operation does not have two operands!");
+    emitError(inst->getLoc(), "This operation does not have exactly one operand!");
     return failure();
   }
   if (inst->getNumResults() != 1) {
