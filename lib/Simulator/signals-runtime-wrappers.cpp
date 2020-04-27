@@ -26,8 +26,6 @@ int alloc_signal(State *state, int index, int init) {
     int newInd = state->addSignal(newSig);
     assert(index == newInd &&
            "the new signal index is expected to be the next index pushed");
-    /// dump the initial value of the signal
-    std::cout << state->time.dump() << "  " << newInd << "  " << init << "\n";
   }
   return index;
 }

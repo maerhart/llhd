@@ -1,13 +1,13 @@
 #ifndef LLHD_SIMULATOR_STATE_H
 #define LLHD_SIMULATOR_STATE_H
 
-#include <iostream>
 #include <map>
 #include <queue>
 #include <string>
 #include <vector>
 
 #include "llvm/ADT/PriorityQueue.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
 namespace llhd {
@@ -30,6 +30,9 @@ struct Time {
 
   /// Add two time values.
   Time operator+(const Time &rhs) const;
+
+  /// Return true if the time represents zero-time.
+  bool isZero();
 
   /// Get the stored time in a printable format.
   std::string dump();
@@ -101,7 +104,7 @@ struct State {
   void updateSignal(int index, int value);
 
   /// Dump a signal to llvm::errs().
-  void dumpSignal(int index);
+  void dumpSignal(llvm::raw_ostream &out, int index);
 
   Time time;
   std::vector<Signal> signals;

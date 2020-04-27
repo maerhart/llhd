@@ -32,6 +32,8 @@ Time Time::operator+(const Time &rhs) const {
   return Time(time + rhs.time, delta + rhs.delta, eps + rhs.eps);
 }
 
+bool Time::isZero() { return (time == 0 && delta == 0 && eps == 0); }
+
 std::string Time::dump() {
   std::stringstream dumpStr;
   dumpStr << time << "ns";
@@ -90,7 +92,7 @@ void UpdateQueue::insertOrUpdate(Time time, int index, int value) {
   push(newSlot);
 }
 
-void State::dumpSignal(int index) {
-  llvm::errs() << time.dump() << "  " << index << "  " << signals[index].value
-               << "\n";
+void State::dumpSignal(llvm::raw_ostream &out, int index) {
+
+  out << time.dump() << "  " << index << "  " << signals[index].value << "\n";
 }
