@@ -1,6 +1,6 @@
 llhd.entity @acc (%clk : !llhd.sig<i1>, %x : !llhd.sig<i32>, %en : !llhd.sig<i1>) -> (%q : !llhd.sig<i32>) {
     %zero = llhd.const 0 : i32
-    %d = llhd.sig %zero : i32 -> !llhd.sig<i32>
+    %d = llhd.sig "d" %zero : i32 -> !llhd.sig<i32>
     // Output signals also need to be created in the entity instantiating this entity
     // We can only drive the signal to zero here, to make sure it has the right value
     // %q = llhd.sig %zero : i32 -> !llhd.sig<i32>
