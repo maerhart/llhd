@@ -108,7 +108,8 @@ LogicalResult mlir::llhd::VerilogPrinter::printUnaryOp(Operation *inst,
                                                        unsigned indentAmount) {
   // Check that the operation is indeed a unary operation
   if (inst->getNumOperands() != 1) {
-    emitError(inst->getLoc(), "This operation does not have exactly one operand!");
+    emitError(inst->getLoc(),
+              "This operation does not have exactly one operand!");
     return failure();
   }
   if (inst->getNumResults() != 1) {
