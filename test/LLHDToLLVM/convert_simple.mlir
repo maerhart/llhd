@@ -1,4 +1,4 @@
-//RUN: llhdc %s --convert-llhd-to-llvm --split-input-file | FileCheck %s
+//RUN: llhdc %s --convert-llhd-to-llvm | FileCheck %s
 
 // CHECK: llvm.func @drive_signal(!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32)
 // CHECK-NEXT: llvm.func @probe_signal(!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
@@ -6,14 +6,14 @@
 // CHECK-NEXT: llvm.func @Foo(%[[STATE:.*]]: !llvm<"i8*">) {
 // CHECK-NEXT: %[[C1:.*]] = llvm.mlir.constant(0 : i1) : !llvm.i1
 // CHECK-NEXT: %[[C2:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
-// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE:.*]], %[[C2.*]], %[[C1:.*]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1) -> !llvm.i32
-// CHECK-NEXT: %[[CALL2:.*]] = llvm.call @probe_signal(%[[STATE:.*]], %[[CALL1:.*]]) : (!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
-// CHECK-NEXT: %[[B1:.*]] = llvm.bitcast %[[CALL2:.*]] : !llvm<"i8*"> to !llvm<"i1*">
-// CHECK-NEXT: %[[L1:.*]] = llvm.load %[[B1:.*]] : !llvm<"i1*">
+// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE]], %[[C2]], %[[C1]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1) -> !llvm.i32
+// CHECK-NEXT: %[[CALL2:.*]] = llvm.call @probe_signal(%[[STATE]], %[[CALL1]]) : (!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
+// CHECK-NEXT: %[[B1:.*]] = llvm.bitcast %[[CALL2]] : !llvm<"i8*"> to !llvm<"i1*">
+// CHECK-NEXT: %[[L1:.*]] = llvm.load %[[B1]] : !llvm<"i1*">
 // CHECK-NEXT: %[[C3:.*]] = llvm.mlir.constant(1 : i1) : !llvm.i1
-// CHECK-NEXT: %[[X1:.*]] = llvm.xor %[[CALL2:.*]], %[[C3:.*]] : !llvm.i1
+// CHECK-NEXT: %[[X1:.*]] = llvm.xor %[[L1]], %[[C3]] : !llvm.i1
 // CHECK-NEXT: %[[C4:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
-// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE:.*]], %[[CALL1:.*]], %[[X1:.*]], %[[C4:.*]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32) -> !llvm.void
+// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE]], %[[CALL1]], %[[X1]], %[[C4]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32) -> !llvm.void
 // CHECK-NEXT: llvm.return
 // CHECK-NEXT: }
 

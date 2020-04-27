@@ -11,15 +11,24 @@ llhd.entity @check_sig_inst () -> () {
     %sigI64 = "llhd.sig"(%cI64) {name = "sigI64"} : (i64) -> !llhd.sig<i64>
 }
 
+// CHECK-LABEL: check_prb
+// CHECK-SAME: %[[SI1:.*]]: !llhd.sig<i1>
+// CHECK-SAME: %[[SI64:.*]]: !llhd.sig<i64>
 func @check_prb(%sigI1 : !llhd.sig<i1>, %sigI64 : !llhd.sig<i64>) {
-    // CHECK: %{{.*}} = llhd.prb %{{.*}} : !llhd.sig<i1> -> i1
+    // CHECK: %{{.*}} = llhd.prb %[[SI1]] : !llhd.sig<i1> -> i1
     %0 = "llhd.prb"(%sigI1) {} : (!llhd.sig<i1>) -> i1
-    // CHECK-NEXT: %{{.*}} = llhd.prb %{{.*}} : !llhd.sig<i64> -> i64
+    // CHECK-NEXT: %{{.*}} = llhd.prb %[[SI64]] : !llhd.sig<i64> -> i64
     %1 = "llhd.prb"(%sigI64) {} : (!llhd.sig<i64>) -> i64
 
     return
 }
 
+// CHECK-LABEL: check_drv
+// CHECK-SAME: %[[SI1:.*]]: !llhd.sig<i1>
+// CHECK-SAME: %[[SI64:.*]]: !llhd.sig<i64>
+// CHECK-SAME: %[[CI1:.*]]: i1
+// CHECK-SAME: %[[CI64:.*]]: i64
+// CHECK-SAME: %[[TIME:.*]]: !llhd.time
 func @check_drv(%sigI1 : !llhd.sig<i1>, %sigI64 : !llhd.sig<i64>, %cI1 : i1, %cI64 : i64, %t : !llhd.time) {
     // CHECK-NEXT: llhd.drv %[[SI1]], %[[CI1]], %[[TIME]] : !llhd.sig<i1>, i1, !llhd.time
     "llhd.drv"(%sigI1, %cI1, %t) {} : (!llhd.sig<i1>, i1, !llhd.time) -> ()

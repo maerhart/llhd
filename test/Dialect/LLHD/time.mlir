@@ -1,9 +1,9 @@
 // RUN: llhdc %s -allow-unregistered-dialects | FileCheck %s
 
 func @test_time_type() {
-    // CHECK: %[[CONST:.*]] = "time_result"() : () -> !llhd.time 
+    // CHECK: %[[CONST:.*]] = "time_result"() : () -> !llhd.time
     %0 = "time_result"() : () -> !llhd.time
-    // CHECK-NEXT: "time_const_arg"(%[[CONST:.*]]) : (!llhd.time) -> ()
+    // CHECK-NEXT: "time_const_arg"(%[[CONST]]) : (!llhd.time) -> ()
     "time_const_arg"(%0) : (!llhd.time) -> ()
     return
 }
