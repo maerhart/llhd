@@ -23,4 +23,6 @@ add_lit_testsuites(LLHDC ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS ${LLHDC_TEST_DEPS}
 )
 
+set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
+
 add_subdirectory(Examples)
