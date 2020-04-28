@@ -18,7 +18,7 @@ jobs:
 
   build:
     name: Build and Test
-    runs-on: ubuntu-latest  
+    runs-on: ubuntu-latest
     steps:
     - name: Configure Environment
       run: echo "::add-path::$GITHUB_WORKSPACE/llvm/install/bin"
@@ -31,13 +31,13 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-5
+        key: ${{ runner.os }}-llvm-install-6
     - name: Get LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
       with:
         repository: 'llvm/llvm-project'
-        ref: '3e14b95d99da94b38c1d0ff1da7e38af34eb8006'
+        ref: 'efd1f17cd9239df04ac3a43d735e836223042b3a'
         path: 'llvm'
     - name: Install LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
@@ -48,7 +48,7 @@ jobs:
       run: cd llhd/build && cmake --build . --target check-llhdc
     - name: Build llhd-sim
       run: cd llhd/build && cmake --build . --target llhd-sim
-  
+
   docgen:
     name: Generate Docs
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-5
+        key: ${{ runner.os }}-llvm-install-6
     - name: Get LLHD
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       uses: actions/checkout@v2
@@ -75,7 +75,7 @@ jobs:
     - name: Generate documentation
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       run: |
-        mkdir llhd/build  
+        mkdir llhd/build
         cd llhd/build
         cmake $GITHUB_WORKSPACE/llhd -DLLVM_ENABLE_ASSERTIONS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
         cmake --build . --target mlir-doc
@@ -90,7 +90,7 @@ jobs:
         cat llhd/build/docs/Passes/Transformations.md >> llhd-docs/docs/passes/Transformations.md
     - name: Commit and push to target repo
       if: steps.cache-llvm.outputs.cache-hit == 'true'
-      run: | 
+      run: |
         cd llhd-docs
         git config --local user.name "GitHub Push Action"
         git config --local user.mail "action@generate_docs.com"
