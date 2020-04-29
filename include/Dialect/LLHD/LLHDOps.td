@@ -588,10 +588,37 @@ def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, 
 }
 
 def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove, DeclareOpInterfaceMethods<CallableOpInterface>]> {
-    let summary = "";
-    // TODO: add description
+    let summary = "Create a process";
     let description = [{
+        A `llhd.proc` represents control-flow in a timed fashion. It allows a
+        procedural description of how a circuit's output signals change in
+        reaction to changing input signals. It has a region with arbitrarily
+        many basic blocks. The first block is the entry block and cannot be
+        targeted by the terminators. It uses `llhd.wait` as a terminator to add
+        timed control-flow. Immediate control-flow with `br` or `cond_br` is
+        also possible. Every process must either contain an infinite loop or
+        terminate with the `llhd.halt` terminator.
 
+        How does a process compare to functions and entities?
+        | Unit     | Paradigm     | Timing    | Models                         |
+        |----------|--------------|-----------|--------------------------------|
+        | Function | control-flow | immediate | Computation in zero time       |
+        | Process  | control-flow | timed     | Behavioral circuit description |
+        | Entity   | data-flow    | timed     | Structural circuit description |
+
+        Syntax:
+        ```
+        proc-op ::= `llhd.proc` proc-symbol `(` ssa-input-list `)` `->` `(` ssa-output-list `)` attr-dict `{` proc-region `}`
+        ```
+
+        Examples:
+        ```
+        llhd.proc @example(%in0 : !llhd.sig<i64>, %in1 : !llhd.sig<i1>) -> (%out2 : !llhd.sig<i1>) {
+            br ^bb1
+        ^bb1:
+            llhd.halt
+        }
+        ```
     }];
 
     let arguments = (ins I64Attr:$ins);
