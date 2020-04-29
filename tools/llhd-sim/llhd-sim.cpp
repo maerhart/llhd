@@ -10,6 +10,7 @@
 #include "mlir/Target/LLVMIR.h"
 
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/ToolOutputFile.h"
 
 using namespace llvm;
@@ -60,6 +61,9 @@ int main(int argc, char **argv) {
   registerDialect<LLVM::LLVMDialect>();
 
   llhd::initLLHDToLLVMPass();
+
+  // Initialize LLVM
+  InitLLVM y(argc, argv);
 
   cl::ParseCommandLineOptions(argc, argv, "LLHD simulator\n");
 
