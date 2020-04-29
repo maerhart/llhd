@@ -614,5 +614,55 @@ def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove, Decl
     let verifier = [{ return ::verify(*this); }];
 }
 
+def LLHD_InstOp : LLHD_Op<"inst", [CallOpInterface, HasParent<"EntityOp">,
+        AttrSizedOperandSegments]> {
+    let summary = "Instantiates a process or entity.";
+    let description = [{
+        Instantiates a process or entity and thus allows to build hierarchies.
+        Can only be used within an entity.
+
+        Syntax:
+        ```
+        inst-op ::= `llhd.inst` symbol-name `(` ssa-input-list `)` `->` `(` ssa-output-list `)` attr-dict `:` functional-type(ssa-input-list, ssa-output-list)
+        ```
+
+        Examples:
+        ```
+        llhd.inst @empty() -> () : () -> ()
+        llhd.inst @proc_symbol() -> (%out0) : () -> !llhd.sig<i32>
+        llhd.inst @entity_symbol(%in0, %in1) -> (%out0, %out1) : (!llhd.sig<i32>, !llhd.sig<i16>) -> (!llhd.sig<i8>, !llhd.sig<i4>)
+        ```
+    }];
+
+    let arguments = (ins FlatSymbolRefAttr:$callee,
+                         Variadic<LLHD_SigType>:$inputs,
+                         Variadic<LLHD_SigType>:$outputs);
+
+    let assemblyFormat = [{
+        $callee `(` $inputs `)` `->` `(` $outputs `)` attr-dict `:`
+        functional-type($inputs, $outputs)
+    }];
+
+    let extraClassDeclaration = [{
+        StringRef getCallee() { return callee(); }
+        FunctionType getCalleeType();
+
+        /// Get the argument operands to the called function.
+        operand_range getArgOperands() {
+            return {arg_operand_begin(), arg_operand_end()};
+        }
+
+        operand_iterator arg_operand_begin() { return operand_begin(); }
+        operand_iterator arg_operand_end() { return operand_end(); }
+
+        /// Return the callee of this operation.
+        CallInterfaceCallable getCallableForCallee() {
+            return getAttrOfType<SymbolRefAttr>("callee");
+        }
+    }];
+
+    let verifier = [{ return ::verify(*this); }];
+}
+
 
 #endif // LLHD_OPS

@@ -28,8 +28,11 @@ struct LLHDInlinerInterface : public DialectInlinerInterface {
     return true;
   }
 
-  bool isLegalToInline(Region *, Region *, BlockAndValueMapping &) const final {
-    return true;
+  bool isLegalToInline(Region *, Region *src,
+                       BlockAndValueMapping &) const final {
+    // Don't inline processes and entities
+    return !isa<llhd::ProcOp>(src->getParentOp()) &&
+           !isa<llhd::EntityOp>(src->getParentOp());
   }
 };
 } // end anonymous namespace

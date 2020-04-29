@@ -1,6 +1,7 @@
 #include "Dialect/LLHD/LLHDOps.h"
 #include "mlir/Dialect/CommonFolders.h"
 #include "mlir/IR/Matchers.h"
+#include "mlir/IR/Module.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/Region.h"
@@ -725,6 +726,60 @@ static LogicalResult verify(llhd::ShrOp op) {
   // TODO: verify that T and Th only differ in the number of bits or elements
 
   return success();
+}
+
+static LogicalResult verify(llhd::InstOp op) {
+  // Check that the callee attribute was specified.
+  auto calleeAttr = op.getAttrOfType<FlatSymbolRefAttr>("callee");
+  if (!calleeAttr)
+    return op.emitOpError("requires a 'callee' symbol reference attribute");
+  auto proc = op.getParentOfType<ModuleOp>().lookupSymbol<llhd::ProcOp>(
+      calleeAttr.getValue());
+  auto entity = op.getParentOfType<ModuleOp>().lookupSymbol<llhd::EntityOp>(
+      calleeAttr.getValue());
+
+  // Verify that the input and output types match the callee.
+  if (proc) {
+    auto type = proc.getType();
+
+    if (proc.ins() != op.inputs().size())
+      return op.emitOpError(
+          "incorrect number of inputs for proc instantiation");
+
+    if (type.getNumInputs() != op.getNumOperands())
+      return op.emitOpError(
+          "incorrect number of outputs for proc instantiation");
+
+    for (unsigned i = 0, e = type.getNumInputs(); i != e; ++i)
+      if (op.getOperand(i).getType() != type.getInput(i))
+        return op.emitOpError("operand type mismatch");
+
+    return success();
+  } else if (entity) {
+    auto type = entity.getType();
+
+    if (entity.ins() != op.inputs().size())
+      return op.emitOpError(
+          "incorrect number of inputs for entity instantiation");
+
+    if (type.getNumInputs() != op.getNumOperands())
+      return op.emitOpError(
+          "incorrect number of outputs for entity instantiation");
+
+    for (unsigned i = 0, e = type.getNumInputs(); i != e; ++i)
+      if (op.getOperand(i).getType() != type.getInput(i))
+        return op.emitOpError("operand type mismatch");
+
+    return success();
+  } else {
+    return op.emitOpError() << "'" << calleeAttr.getValue()
+                            << "' does not reference a valid proc or entity";
+  }
+}
+
+FunctionType llhd::InstOp::getCalleeType() {
+  SmallVector<Type, 8> argTypes(getOperandTypes());
+  return FunctionType::get(argTypes, ArrayRef<Type>(), getContext());
 }
 
 namespace mlir {
