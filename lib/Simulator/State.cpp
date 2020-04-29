@@ -24,8 +24,7 @@ bool Time::operator<(const Time &rhs) const {
 }
 
 bool Time::operator==(const Time &rhs) const {
-  return (this->time == rhs.time && this->delta == rhs.delta &&
-          this->eps == rhs.eps);
+  return (time == rhs.time && delta == rhs.delta && eps == rhs.eps);
 }
 
 Time Time::operator+(const Time &rhs) const {
