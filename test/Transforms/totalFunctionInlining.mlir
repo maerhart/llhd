@@ -36,17 +36,17 @@ llhd.entity @check_entity_inline() -> (%out : !llhd.sig<i32>) {
 
 // CHECK-LABEL: @check_proc_inline
 llhd.proc @check_proc_inline(%arg : !llhd.sig<i1>) -> (%out : !llhd.sig<i32>) {
-    // CHECK-NEXT: %{{.*}} = llhd.prb
-    // CHECK-NEXT: cond_br %{{.*}}, ^{{.*}}, ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
-    // CHECK-NEXT: %{{.*}} = llhd.const
-    // CHECK-NEXT: br ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
-    // CHECK-NEXT: %{{.*}} = llhd.const
-    // CHECK-NEXT: br ^{{.*}}
-    // CHECK-NEXT: ^{{.*}}
-    // CHECK-NEXT: %{{.*}} = llhd.const
-    // CHECK-NEXT: llhd.drv
+    // CHECK-NEXT: %[[PRB:.*]] = llhd.prb
+    // CHECK-NEXT: cond_br %[[PRB]], ^[[BB1:.*]], ^[[BB2:.*]]
+    // CHECK-NEXT: ^[[BB1]]:
+    // CHECK-NEXT: %[[C0:.*]] = llhd.const
+    // CHECK-NEXT: br ^[[BB3:.*]](%[[C0]] : i32)
+    // CHECK-NEXT: ^[[BB2]]:
+    // CHECK-NEXT: %[[C1:.*]] = llhd.const
+    // CHECK-NEXT: br ^[[BB3]](%[[C1]] : i32)
+    // CHECK-NEXT: ^[[BB3]](%[[A:.*]]: i32):
+    // CHECK-NEXT: %[[C2:.*]] = llhd.const
+    // CHECK-NEXT: llhd.drv %{{.*}}, %[[A]], %[[C2]] : !llhd.sig<i32>, i32, !llhd.time
     // CHECK-NEXT: llhd.halt
     // CHECK-NEXT: }
     %0 = llhd.prb %arg : !llhd.sig<i1> -> i1

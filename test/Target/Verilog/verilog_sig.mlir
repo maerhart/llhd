@@ -2,22 +2,22 @@
 
 // CHECK-LABEL: _check_sig
 llhd.entity @check_sig () -> () {
-    // CHECK-NEXT: wire _{{.*}} = 1'd1;
+    // CHECK-NEXT: wire _[[A:.*]] = 1'd1;
     %0 = llhd.const 1 : i1
-    // CHECK-NEXT: wire [63:0] _{{.*}} = 64'd256;
+    // CHECK-NEXT: wire [63:0] _[[B:.*]] = 64'd256;
     %1 = llhd.const 256 : i64
     %2 = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-    // CHECK-NEXT: var _{{.*}} = _{{.*}};
+    // CHECK-NEXT: var _[[C:.*]] = _[[A]];
     %3 = llhd.sig %0 : i1 -> !llhd.sig<i1>
-    // CHECK-NEXT: var [63:0] _{{.*}} = _{{.*}};
+    // CHECK-NEXT: var [63:0] _{{.*}} = _[[B]];
     %4 = llhd.sig %1 : i64 -> !llhd.sig<i64>
     %5 = llhd.prb %3 : !llhd.sig<i1> -> i1
-    // CHECK-NEXT: assign _{{.*}} = (#1ns) _{{.*}};
+    // CHECK-NEXT: assign _[[C]] = (#1ns) _[[A]];
     llhd.drv %3, %0, %2 : !llhd.sig<i1>, i1, !llhd.time
     %6 = llhd.const #llhd.time<0ns, 1d, 0e> : !llhd.time
-    // CHECK-NEXT: assign _{{.*}} = (#0ns) _{{.*}};
+    // CHECK-NEXT: assign _[[C]] = (#0ns) _[[A]];
     llhd.drv %3, %0, %6 : !llhd.sig<i1>, i1, !llhd.time
-    // CHECK-NEXT: assign _{{.*}} = (#0ns) _{{.*}} ? _{{.*}} : _{{.*}};
+    // CHECK-NEXT: assign _[[C]] = (#0ns) _[[A]] ? _[[A]] : _[[C]];
     llhd.drv %3, %0, %6, %0 : !llhd.sig<i1>, i1, !llhd.time, i1
 }
 
