@@ -23,9 +23,11 @@ func @check_prb(%sigI1 : !llhd.sig<i1>, %sigI64 : !llhd.sig<i64>) {
 
 func @check_drv(%sigI1 : !llhd.sig<i1>, %sigI64 : !llhd.sig<i64>, %cI1 : i1, %cI64 : i64, %t : !llhd.time) {
     // CHECK: llhd.drv %{{.*}}, %{{.*}}, %{{.*}} : !llhd.sig<i1>, i1, !llhd.time
-    llhd.drv %sigI1, %cI1, %t : !llhd.sig<i1>, i1, !llhd.time
+    "llhd.drv"(%sigI1, %cI1, %t) {} : (!llhd.sig<i1>, i1, !llhd.time) -> ()
     // CHECK-NEXT: llhd.drv %{{.*}}, %{{.*}}, %{{.*}} : !llhd.sig<i64>, i64, !llhd.time
-    llhd.drv %sigI64, %cI64, %t : !llhd.sig<i64>, i64, !llhd.time
+    "llhd.drv" (%sigI64, %cI64, %t) {} : (!llhd.sig<i64>, i64, !llhd.time) -> ()
+    // CHECK-NEXT: llhd.drv %{{.*}}, %{{.*}}, %{{.*}}, %{{.*}} : !llhd.sig<i64>, i64, !llhd.time, i1
+    "llhd.drv" (%sigI64, %cI64, %t, %cI1) {} : (!llhd.sig<i64>, i64, !llhd.time, i1) -> ()
 
     return
 }

@@ -17,6 +17,8 @@ llhd.entity @check_sig () -> () {
     %6 = llhd.const #llhd.time<0ns, 1d, 0e> : !llhd.time
     // CHECK-NEXT: assign _{{.*}} = (#0ns) _{{.*}};
     llhd.drv %3, %0, %6 : !llhd.sig<i1>, i1, !llhd.time
+    // CHECK-NEXT: assign _{{.*}} = (#0ns) _{{.*}} ? _{{.*}} : _{{.*}};
+    llhd.drv %3, %0, %6, %0 : !llhd.sig<i1>, i1, !llhd.time, i1
 }
 
 // -----
