@@ -303,7 +303,7 @@ struct NotOpConversion : public ConvertToLLVMPattern {
     // get `llhd.not` operation
     auto notOp = cast<NotOp>(op);
     // get integer width
-    unsigned width = notOp.getType().dyn_cast<IntegerType>().getWidth();
+    unsigned width = notOp.getType().getIntOrFloatBitWidth();
     // get llvm types
     auto iTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), width);
 
