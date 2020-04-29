@@ -12,8 +12,8 @@ using namespace mlir::llhd::sim;
 
 int *probe_signal(State *state, int index) {
   assert(state && "probe_signal: state not found");
-  Signal sig = state->signals[index];
-  return &sig.value;
+  auto &sig = state->signals[index];
+  return sig.value.get();
 }
 
 void drive_signal(State *state, int index, int value, int time) {
@@ -25,8 +25,7 @@ void drive_signal(State *state, int index, int value, int time) {
 int alloc_signal(State *state, int index, int init) {
   assert(state && "alloc_signal: state not found");
   if (index >= state->signals.size()) {
-    Signal newSig = Signal(init);
-    int newInd = state->addSignal(newSig);
+    int newInd = state->addSignal(init);
     assert(index == newInd &&
            "the new signal index is expected to be the next index pushed");
   }

@@ -68,13 +68,15 @@ void State::pushQueue(int t, int index, int value) {
 }
 
 /// Add a new signal to the state. Returns the index of the new signal.
-int State::addSignal(Signal sig) {
-  signals.push_back(sig);
+int State::addSignal(int init) {
+  signals.push_back(Signal(init));
   return signals.size() - 1;
 }
 
 /// Update the signal at position i in the signals list to the given value.
-void State::updateSignal(int index, int value) { signals[index].value = value; }
+void State::updateSignal(int index, int value) {
+  *signals[index].value = value;
+}
 
 //===----------------------------------------------------------------------===//
 // UpdateQueue
@@ -93,5 +95,5 @@ void UpdateQueue::insertOrUpdate(Time time, int index, int value) {
 
 void State::dumpSignal(llvm::raw_ostream &out, int index) {
 
-  out << time.dump() << "  " << index << "  " << signals[index].value << "\n";
+  out << time.dump() << "  " << index << "  " << *signals[index].value << "\n";
 }

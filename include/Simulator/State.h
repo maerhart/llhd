@@ -47,9 +47,9 @@ private:
 /// The simulator's internal representation of a signal.
 struct Signal {
   /// Construct a signal with the given initial value.
-  Signal(int value) : value(value) {}
+  Signal(int init) { value = std::make_unique<int>(init); }
 
-  int value;
+  std::unique_ptr<int> value;
 };
 
 /// The simulator's internal representation of one queue slot.
@@ -98,7 +98,7 @@ struct State {
   Signal getSignal(int i);
 
   /// Add a new signal to the state. Returns the index of the new signal.
-  int addSignal(Signal sig);
+  int addSignal(int sig);
 
   /// Update the signal at position i in the signals list to the given value.
   void updateSignal(int index, int value);

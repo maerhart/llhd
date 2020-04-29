@@ -41,7 +41,7 @@ int Engine::simulate(int n) {
 
     // dump changes, only if actually changed
     for (auto change : pop.changes) {
-      if (state->signals[change.first].value == change.second)
+      if (*state->signals[change.first].value == change.second)
         continue;
       state->updateSignal(change.first, change.second);
       state->dumpSignal(out, change.first);
