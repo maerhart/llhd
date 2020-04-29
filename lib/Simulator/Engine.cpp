@@ -25,6 +25,8 @@ Engine::Engine(llvm::raw_ostream &out, ModuleOp module)
 }
 
 int Engine::simulate(int n) {
+  assert(engine && "engine not found");
+  assert(state && "state not found");
   int i = 0;
   while (!state->queue.empty()) {
     if (n > 0 && i >= n) {

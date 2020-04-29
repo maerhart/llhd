@@ -11,16 +11,19 @@ using namespace mlir::llhd::sim;
 //===----------------------------------------------------------------------===//
 
 int *probe_signal(State *state, int index) {
+  assert(state && "probe_signal: state not found");
   Signal sig = state->signals[index];
   return &sig.value;
 }
 
 void drive_signal(State *state, int index, int value, int time) {
+  assert(state && "drive_signal: state not found");
   // spawn new event
   state->pushQueue(time, index, value);
 }
 
 int alloc_signal(State *state, int index, int init) {
+  assert(state && "alloc_signal: state not found");
   if (index >= state->signals.size()) {
     Signal newSig = Signal(init);
     int newInd = state->addSignal(newSig);
