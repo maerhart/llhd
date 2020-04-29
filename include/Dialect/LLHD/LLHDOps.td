@@ -4,6 +4,7 @@
 include "mlir/Interfaces/SideEffects.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
+include "mlir/IR/SymbolInterfaces.td"
 include "Dialect/LLHD/LLHDBase.td"
 
 //===----------------------------------------------------------------------===//
@@ -14,10 +15,10 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
     let summary = "Introduce a new constant.";
 
     let description = [{
-        The `llhd.const` instruction introduces a new constant value as an 
-        SSA-operator.  
-        Legal types are integers and time. Note: Signals 
-        are not legal to define using `llhd.const`, use the `llhd.sig` 
+        The `llhd.const` instruction introduces a new constant value as an
+        SSA-operator.
+        Legal types are integers and time. Note: Signals
+        are not legal to define using `llhd.const`, use the `llhd.sig`
         instruction for that.
 
         **Custom syntax:**
@@ -27,7 +28,7 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
         ```
 
         **Examples:**
-        
+
         ```
         %0 = llhd.const 1 : i64
         %1 = llhd.const #llhd.time<1ns, 2d, 3d> : !llhd.time
@@ -48,7 +49,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
     let summary = "Create a signal.";
 
     let description = [{
-       The `llhd.sig` instruction introduces a new signal in the IR. The input 
+       The `llhd.sig` instruction introduces a new signal in the IR. The input
        operand determines the initial value carried by the signal, while the
        result type will always be a signal carrying the type of the init operand.
        Signals can only be allocated within entities.
@@ -68,7 +69,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
        %init_i1 = llhd.const 1 : i1
        %sig_i1 = llhd.sig %init_i1 : i1 -> !llhd.sig<i1>
        ```
-       The first `llhd.sig` instruction creates a new signal carrying an `i64` 
+       The first `llhd.sig` instruction creates a new signal carrying an `i64`
        type with initial value of 123, while the second one creates a new signal
        carrying an `i1` value with initial value of 1.
     }];
@@ -96,7 +97,7 @@ def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
         ```
 
         **Examples:***
-        
+
         ```
         %const_i1 = llhd.const 1 : i1
         %sig_i1 = llhd.sig %const_i1 : i1 -> !llhd.sig<i1>
@@ -152,9 +153,9 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
 def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator, HasParent<"EntityOp">]> {
     let summary = "Dummy terminator";
     let description = [{
-        The `"llhd.terminator"` op is a dummy terminator for an `EntityOp` unit. 
-        It provides no further meaning other than ensuring correct termination 
-        of an entitiy's region. This operation provides no custom syntax and 
+        The `"llhd.terminator"` op is a dummy terminator for an `EntityOp` unit.
+        It provides no further meaning other than ensuring correct termination
+        of an entitiy's region. This operation provides no custom syntax and
         should never explicitly appear in LLHD's custom syntax.
     }];
 
@@ -162,11 +163,11 @@ def LLHD_TerminatorOp : LLHD_Op<"terminator", [Terminator, HasParent<"EntityOp">
     let printer = ?;
 }
 
-def LLHD_WaitOp : LLHD_Op<"wait", 
+def LLHD_WaitOp : LLHD_Op<"wait",
         [Terminator, AttrSizedOperandSegments, HasParent<"ProcOp">, DeclareOpInterfaceMethods<BranchOpInterface>]> {
     let summary = "Suspends execution of a process.";
     let description = [{
-        The `wait` instruction suspends execution of a process until any of the 
+        The `wait` instruction suspends execution of a process until any of the
         observed signals change or a fixed time interval has passed. Execution
         resumes at the specified basic block with the passed arguments.
         * This is a terminator instruction.
@@ -176,7 +177,7 @@ def LLHD_WaitOp : LLHD_Op<"wait",
         ```
         wait-op ::= `llhd.wait` ssa-list-obs (`for` ssa-time)? `,` successor-dest ( `(` ssa-list-dest-arguments `:` type-list-dest-arguments `)` )? `:` type-list-obs (`,` type-time)?
         ```
-        Notes: 
+        Notes:
         * `ssa-list-obs`, `ssa-list-dest-arguments`, `type-list-dest-arguments` and `type-list-obs` are comma-separated lists of 0 or more elements.
         * In case there is no optional time and `type-list-obs` has zero elements, the last colon is omitted as well.
 
@@ -189,11 +190,11 @@ def LLHD_WaitOp : LLHD_Op<"wait",
         ```
     }];
 
-    let arguments = (ins Variadic<LLHD_SigType>:$obs, 
+    let arguments = (ins Variadic<LLHD_SigType>:$obs,
                          Variadic<LLHD_TimeType>:$time,
-                         Variadic<AnyType>:$destOps, 
-                         I32ElementsAttr:$operand_segment_sizes); 
-     
+                         Variadic<AnyType>:$destOps,
+                         I32ElementsAttr:$operand_segment_sizes);
+
     let successors = (successor AnySuccessor:$dest);
 
     let verifier = [{ return ::verify(*this); }];
@@ -202,7 +203,7 @@ def LLHD_WaitOp : LLHD_Op<"wait",
 def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
     let summary = "Terminates execution of a process.";
     let description = [{
-        The `halt` instruction terminates execution of a process. All processes 
+        The `halt` instruction terminates execution of a process. All processes
         must halt eventually or consist of an infinite loop.
         * This is a terminator instruction
         * This instruction is only allowed in processes (`llhd.proc`).
@@ -228,8 +229,8 @@ def LLHD_HaltOp : LLHD_Op<"halt", [Terminator, HasParent<"ProcOp">]> {
 def LLHD_NotOp : LLHD_ArithmeticOrBitwiseOp<"not", []> {
     let summary = "Bitwise NOT";
     let description = [{
-        Takes an integer of any width or a nine-valued-logic (IEEE 1164) value 
-        of any width as input. Flips each bit of a value. The result always has 
+        Takes an integer of any width or a nine-valued-logic (IEEE 1164) value
+        of any width as input. Flips each bit of a value. The result always has
         the exact same type.
 
         **Syntax:**
@@ -240,7 +241,7 @@ def LLHD_NotOp : LLHD_ArithmeticOrBitwiseOp<"not", []> {
         **Examples:**
         ```
         %0 = llhd.const 0 : i32
-        %1 = llhd.not %0 : i32 
+        %1 = llhd.not %0 : i32
         ```
 
         **Truth Table for `iN`:**
@@ -264,7 +265,7 @@ def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
     let summary = "Bitwise AND";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
-        values of the same width as input. Calculates the bitwise AND. The 
+        values of the same width as input. Calculates the bitwise AND. The
         result is always of the exact same type as the two inputs.
 
         **Syntax:**
@@ -275,7 +276,7 @@ def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
         **Examples:**
         ```
         %0 = llhd.const 0 : i32
-        %1 = llhd.and %0, %0 : i32 
+        %1 = llhd.and %0, %0 : i32
         ```
 
         **Truth Table for `iN`:**
@@ -300,7 +301,7 @@ def LLHD_AndOp : LLHD_ArithmeticOrBitwiseOp<"and", [Commutative]> {
         |   -   |  U  |  X  |  0  |  X  |  X  |  X  |  0  |  X  |  X  |
     }];
 
-    let arguments = (ins AnySignlessInteger:$lhs, 
+    let arguments = (ins AnySignlessInteger:$lhs,
                          AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
@@ -309,7 +310,7 @@ def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
     let summary = "Bitwise OR";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
-        values of the same width as input. Calculates the bitwise OR. The 
+        values of the same width as input. Calculates the bitwise OR. The
         result is always of the exact same type as the two inputs.
 
         **Syntax:**
@@ -320,7 +321,7 @@ def LLHD_OrOp : LLHD_ArithmeticOrBitwiseOp<"or", [Commutative]> {
         **Examples:**
         ```
         %0 = llhd.const 0 : i32
-        %1 = llhd.or %0, %0 : i32 
+        %1 = llhd.or %0, %0 : i32
         ```
 
         **Truth Table for `iN`:**
@@ -354,7 +355,7 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
     let summary = "Bitwise XOR";
     let description = [{
         Takes two integers of the same width or two nine-valued-logic (IEEE 1164)
-        values of the same width as input. Calculates the bitwise XOR. The 
+        values of the same width as input. Calculates the bitwise XOR. The
         result is always of the exact same type as the two inputs.
 
         **Syntax:**
@@ -365,7 +366,7 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
         **Examples:**
         ```
         %0 = llhd.const 0 : i32
-        %1 = llhd.xor %0, %0 : i32 
+        %1 = llhd.xor %0, %0 : i32
         ```
 
         **Truth Table for `iN`:**
@@ -390,7 +391,7 @@ def LLHD_XorOp : LLHD_ArithmeticOrBitwiseOp<"xor", [Commutative]> {
         |   -   |  U  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |  X  |
     }];
 
-    let arguments = (ins AnySignlessInteger:$lhs, 
+    let arguments = (ins AnySignlessInteger:$lhs,
                          AnySignlessInteger:$rhs);
     let hasFolder = 1;
 }
@@ -402,7 +403,7 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
         may differ in the number of bits or elements. The result always has the
         same type (including width) of the base value.
         The instruction is transparent to signals and pointers. For example,
-        passing a signal as argument will shift the underlying value and return 
+        passing a signal as argument will shift the underlying value and return
         a signal to the shifted value.
         Allowed (underlying) types are signless integers, nine-valued-logic values
         and arrays. The shift amount has to be a signless integer. A shift amount
@@ -423,7 +424,7 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base, 
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base,
                          AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
                          AnySignlessInteger:$amount);
     let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
@@ -442,7 +443,7 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
         may differ in the number of bits or elements. The result always has the
         same type (including width) of the base value.
         The instruction is transparent to signals and pointers. For example,
-        passing a signal as argument will shift the underlying value and return 
+        passing a signal as argument will shift the underlying value and return
         a signal to the shifted value.
         Allowed (underlying) types are signless integers, nine-valued-logic values
         and arrays. The shift amount has to be a signless integer. A shift amount
@@ -463,7 +464,7 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base, 
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base,
                          AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
                          AnySignlessInteger:$amount);
     let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
@@ -537,12 +538,12 @@ def LLHD_SModOp : LLHD_ArithmeticOrBitwiseOp<"smod", []> {
 def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, SingleBlockImplicitTerminator<"TerminatorOp">, DeclareOpInterfaceMethods<CallableOpInterface>]> {
     let summary = "Create an entity.";
     let description = [{
-        The `llhd.entity` operation defines a new entity unit. An entity 
+        The `llhd.entity` operation defines a new entity unit. An entity
         represents the data-flow description of how a circuit's output values
-        change in reaction to changing input values.  
-        An entity contains one region with a single block and an implicit 
-        `TerminatorOp` terminator. Both the block name and terminator are 
-        omitted in the custom syntax. No further blocks and control-flow are 
+        change in reaction to changing input values.
+        An entity contains one region with a single block and an implicit
+        `TerminatorOp` terminator. Both the block name and terminator are
+        omitted in the custom syntax. No further blocks and control-flow are
         legal inside an entity.
 
         **Custom syntax:**
@@ -570,6 +571,9 @@ def LLHD_EntityOp : LLHD_Op<"entity", [Symbol, FunctionLike, IsolatedFromAbove, 
 
     let extraClassDeclaration = [{
         friend class OpTrait::FunctionLike<EntityOp>;
+
+        // use FunctionLike traits's getBody method
+        using OpTrait::FunctionLike<EntityOp>::getBody;
 
         /// Hooks for the input/output type enumeration in FunctionLike.
         unsigned getNumFuncArguments() { return getType().getNumInputs(); }
