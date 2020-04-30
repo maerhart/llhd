@@ -24,13 +24,14 @@ bool Time::operator<(const Time &rhs) const {
 }
 
 bool Time::operator==(const Time &rhs) const {
-  return (this->time == rhs.time && this->delta == rhs.delta &&
-          this->eps == rhs.eps);
+  return (time == rhs.time && delta == rhs.delta && eps == rhs.eps);
 }
 
 Time Time::operator+(const Time &rhs) const {
   return Time(time + rhs.time, delta + rhs.delta, eps + rhs.eps);
 }
+
+bool Time::isZero() { return (time == 0 && delta == 0 && eps == 0); }
 
 std::string Time::dump() {
   std::stringstream dumpStr;
@@ -67,13 +68,15 @@ void State::pushQueue(int t, int index, int value) {
 }
 
 /// Add a new signal to the state. Returns the index of the new signal.
-int State::addSignal(Signal sig) {
-  signals.push_back(sig);
+int State::addSignal(int init) {
+  signals.push_back(Signal(init));
   return signals.size() - 1;
 }
 
 /// Update the signal at position i in the signals list to the given value.
-void State::updateSignal(int index, int value) { signals[index].value = value; }
+void State::updateSignal(int index, int value) {
+  *signals[index].value = value;
+}
 
 //===----------------------------------------------------------------------===//
 // UpdateQueue
@@ -90,7 +93,7 @@ void UpdateQueue::insertOrUpdate(Time time, int index, int value) {
   push(newSlot);
 }
 
-void State::dumpSignal(int index) {
-  llvm::errs() << time.dump() << "  " << index << "  " << signals[index].value
-               << "\n";
+void State::dumpSignal(llvm::raw_ostream &out, int index) {
+
+  out << time.dump() << "  " << index << "  " << *signals[index].value << "\n";
 }

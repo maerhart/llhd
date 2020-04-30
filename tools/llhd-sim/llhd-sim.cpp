@@ -10,12 +10,18 @@
 #include "mlir/Target/LLVMIR.h"
 
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/ToolOutputFile.h"
 
 using namespace llvm;
 using namespace mlir;
 
 static cl::opt<std::string>
     inputFilename(cl::Positional, cl::desc("<input-file>"), cl::init("-"));
+
+static cl::opt<std::string> outputFilename("o", cl::desc("Output filename"),
+                                           cl::value_desc("filename"),
+                                           cl::init("-"));
 
 static cl::opt<int> nSteps("n", cl::desc("Set the maximum number of steps"),
                            cl::value_desc("max-steps"));
@@ -56,6 +62,9 @@ int main(int argc, char **argv) {
 
   llhd::initLLHDToLLVMPass();
 
+  // Initialize LLVM
+  InitLLVM y(argc, argv);
+
   cl::ParseCommandLineOptions(argc, argv, "LLHD simulator\n");
 
   // Set up the input file.
@@ -64,6 +73,12 @@ int main(int argc, char **argv) {
   if (!file) {
     llvm::errs() << errorMessage << "\n";
     return 1;
+  }
+
+  auto output = openOutputFile(outputFilename, &errorMessage);
+  if (!output) {
+    llvm::errs() << errorMessage << "\n";
+    exit(1);
   }
 
   // parse input file
@@ -94,8 +109,9 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  llhd::sim::Engine engine(*module);
+  llhd::sim::Engine engine(output->os(), *module);
   engine.simulate(nSteps);
 
+  output->keep();
   return 0;
 }

@@ -10,6 +10,7 @@ set(LLHDC_TEST_DEPENDS
   FileCheck count not
   llhdc
   llhd-translate
+  llhd-sim
 )
 
 add_lit_testsuite(check-llhdc "Running the LLHDC regression tests"
@@ -21,5 +22,7 @@ set_target_properties(check-llhdc PROPERTIES FOLDER "Tests")
 add_lit_testsuites(LLHDC ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS ${LLHDC_TEST_DEPS}
 )
+
+set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
 
 add_subdirectory(Examples)

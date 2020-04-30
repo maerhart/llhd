@@ -10,7 +10,8 @@
 using namespace mlir;
 using namespace llhd::sim;
 
-Engine::Engine(ModuleOp module) : module(module) {
+Engine::Engine(llvm::raw_ostream &out, ModuleOp module)
+    : module(module), out(out) {
   state = std::make_unique<State>();
   // add 0-time event
   state->queue.push(Slot(Time()));
@@ -24,6 +25,8 @@ Engine::Engine(ModuleOp module) : module(module) {
 }
 
 int Engine::simulate(int n) {
+  assert(engine && "engine not found");
+  assert(state && "state not found");
   int i = 0;
   while (!state->queue.empty()) {
     if (n > 0 && i >= n) {
@@ -38,10 +41,10 @@ int Engine::simulate(int n) {
 
     // dump changes, only if actually changed
     for (auto change : pop.changes) {
-      if (state->signals[change.first].value == change.second)
+      if (*state->signals[change.first].value == change.second)
         continue;
-      state->signals[change.first] = change.second;
-      state->dumpSignal(change.first);
+      state->updateSignal(change.first, change.second);
+      state->dumpSignal(out, change.first);
     }
 
     // run entity
@@ -49,6 +52,13 @@ int Engine::simulate(int n) {
     if (invocationResult) {
       llvm::errs() << "Failed invocation of Foo: " << invocationResult;
       return -1;
+    }
+
+    // dump signals initial values
+    if (state->time.isZero()) {
+      for (int i = 0; i < state->signals.size(); i++) {
+        state->dumpSignal(out, i);
+      }
     }
     i++;
   }
