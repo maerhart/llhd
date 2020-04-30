@@ -8,6 +8,7 @@
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/StringMap.h"
 
 using namespace mlir;
 
@@ -296,15 +297,15 @@ static ParseResult parseWaitOp(OpAsmParser &parser, OperationState &result) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return failure();
 
-  // Parse the types, notice that the colon is only parsed if there is at least
-  // one type to parse
+  // Parse the types, notice that the colon is only parsed if there is at
+  // least one type to parse
   if (!obsOperands.empty() || !timeOperands.empty()) {
     if (parser.parseColon())
       return failure();
 
-    // Parse the types of the observed signals, we cannot use the parseTypeList
-    // function from the parser because there we cannot specify the amount of
-    // types in the list to be parsed
+    // Parse the types of the observed signals, we cannot use the
+    // parseTypeList function from the parser because there we cannot specify
+    // the amount of types in the list to be parsed
     for (unsigned i = 0, n = obsOperands.size(); i < n; ++i) {
       Type type;
       if (parser.parseType(type))
@@ -519,7 +520,21 @@ LogicalResult mlir::llhd::EntityOp::verifyBody() {
                       "is not allowed, use the intended instruction instead.");
     return failure();
   }
-  return success();
+
+  // check signal names are unique
+  llvm::StringMap<bool> sigMap;
+  auto walkResult = walk([&sigMap](Operation *op) -> WalkResult {
+    if (auto sigOp = dyn_cast<SigOp>(op)) {
+      if (sigMap[sigOp.name()]) {
+        return sigOp.emitError("Redefinition of signal named '")
+               << sigOp.name() << "'!";
+      }
+      sigMap.insert_or_assign(sigOp.name(), true);
+    }
+    return WalkResult::advance();
+  });
+
+  return failure(walkResult.wasInterrupted());
 }
 
 Region *llhd::EntityOp::getCallableRegion() {
@@ -532,8 +547,8 @@ ArrayRef<Type> llhd::EntityOp::getCallableResults() {
 
 // Proc Operation
 LogicalResult mlir::llhd::ProcOp::verifyType() {
-  // Fail if function returns more than zero values. This is because the outputs
-  // of a process are specially marked arguments.
+  // Fail if function returns more than zero values. This is because the
+  // outputs of a process are specially marked arguments.
   if (this->getNumResults() > 0) {
     this->emitOpError(
         "process has more than zero return types, this is not allowed");
@@ -551,8 +566,8 @@ LogicalResult mlir::llhd::ProcOp::verifyType() {
 }
 
 LogicalResult mlir::llhd::ProcOp::verifyBody() {
-  // Body must not be empty, this indicates an external process. We use another
-  // instruction to reference external processes.
+  // Body must not be empty, this indicates an external process. We use
+  // another instruction to reference external processes.
   if (this->isExternal()) {
     this->emitOpError("defining external processes with the proc instruction "
                       "is not allowed, use the intended instruction instead.");
@@ -581,8 +596,8 @@ parseProcArgumentList(OpAsmParser &parser, SmallVectorImpl<Type> &argTypes,
     return failure();
 
   // The argument list either has to consistently have ssa-id's followed by
-  // types, or just be a type list.  It isn't ok to sometimes have SSA ID's and
-  // sometimes not.
+  // types, or just be a type list.  It isn't ok to sometimes have SSA ID's
+  // and sometimes not.
   auto parseArgument = [&]() -> ParseResult {
     llvm::SMLoc loc = parser.getCurrentLocation();
 

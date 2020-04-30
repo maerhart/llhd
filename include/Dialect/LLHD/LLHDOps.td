@@ -52,32 +52,33 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
        The `llhd.sig` instruction introduces a new signal in the IR. The input
        operand determines the initial value carried by the signal, while the
        result type will always be a signal carrying the type of the init operand.
-       Signals can only be allocated within entities.
+       A signal defines a unique name within the entity it resides in. Signals
+       can only be allocated within entities.
 
        **Custom syntax:**
 
        ```
-       sig-op ::= ssa-id `=` `llhd.sig` ssa-init attr-dict `:` init-type `->` !llhd.sig<init-type>
+       sig-op ::= ssa-id `=` `llhd.sig` sig-name ssa-init attr-dict `:` init-type `->` !llhd.sig<init-type>
        ```
 
        **Examples:**
 
        ```
        %init_i64 = llhd.const 123 : i64
-       %sig_i64 = llhd.sig %init_64 : i64 -> !llhd.sig<i64>
+       %sig_i64 = llhd.sig "foo" %init_64 : i64 -> !llhd.sig<i64>
 
        %init_i1 = llhd.const 1 : i1
-       %sig_i1 = llhd.sig %init_i1 : i1 -> !llhd.sig<i1>
+       %sig_i1 = llhd.sig "bar" %init_i1 : i1 -> !llhd.sig<i1>
        ```
-       The first `llhd.sig` instruction creates a new signal carrying an `i64`
+       The first `llhd.sig` instruction creates a new signal named "foo", carrying an `i64`
        type with initial value of 123, while the second one creates a new signal
-       carrying an `i1` value with initial value of 1.
+       named "bar", carrying an `i1` type with initial value of 1.
     }];
 
-    let arguments = (ins AnySignlessInteger:$init);
+    let arguments = (ins StrAttr:$name, AnySignlessInteger:$init);
     let results = (outs LLHD_SigType);
 
-    let assemblyFormat = "$init attr-dict `:` type($init) `->` type(results)";
+    let assemblyFormat = "$name $init attr-dict `:` type($init) `->` type(results)";
 
     let verifier = [{ return ::verify(*this); }];
 }
