@@ -608,6 +608,7 @@ def LLHD_ProcOp : LLHD_Op<"proc", [Symbol, FunctionLike, IsolatedFromAbove, Decl
         terminate with the `llhd.halt` terminator.
 
         How does a process compare to functions and entities?
+
         | Unit     | Paradigm     | Timing    | Models                         |
         |----------|--------------|-----------|--------------------------------|
         | Function | control-flow | immediate | Computation in zero time       |
