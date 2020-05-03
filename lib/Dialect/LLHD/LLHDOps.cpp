@@ -368,13 +368,11 @@ static void print(OpAsmPrinter &p, llhd::WaitOp op) {
 }
 
 // Implement this operation for the BranchOpInterface
-Optional<OperandRange> llhd::WaitOp::getSuccessorOperands(unsigned index) {
+Optional<MutableOperandRange>
+llhd::WaitOp::getMutableSuccessorOperands(unsigned index) {
   assert(index == 0 && "invalid successor index");
-  return destOps();
+  return destOpsMutable();
 }
-
-// Implement this operation for the BranchOpInterface
-bool llhd::WaitOp::canEraseSuccessorOperand() { return true; }
 
 // Entity Op
 
