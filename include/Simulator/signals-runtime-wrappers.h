@@ -11,7 +11,8 @@ extern "C" {
 
 /// Allocate a new signal. The index of the new signal in the state's list of
 /// signals is returned.
-int alloc_signal(mlir::llhd::sim::State *state, int index, int init);
+int alloc_signal(mlir::llhd::sim::State *state, char *name, char *owner,
+                 int init);
 
 /// Probe a signal and return a pointer to the carried value.
 int *probe_signal(mlir::llhd::sim::State *state, int index);

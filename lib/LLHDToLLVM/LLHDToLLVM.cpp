@@ -18,7 +18,24 @@ using namespace mlir;
 using namespace mlir::llhd;
 
 namespace {
-static int counter = 0;
+//===----------------------------------------------------------------------===//
+// Helpers
+//===----------------------------------------------------------------------===//
+
+/// Get an existing global string
+Value getGlobalString(Location loc, ConversionPatternRewriter &rewriter,
+                      LLVMTypeConverter &typeConverter, LLVM::GlobalOp &str) {
+  auto i8PtrTy = LLVM::LLVMType::getInt8PtrTy(typeConverter.getDialect());
+  auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
+
+  auto addr = rewriter.create<LLVM::AddressOfOp>(
+      loc, str.getType().getPointerTo(), str.getName());
+  auto idx = rewriter.create<LLVM::ConstantOp>(loc, i32Ty,
+                                               rewriter.getI32IntegerAttr(0));
+  llvm::SmallVector<Value, 2> idxs({idx, idx});
+  auto gep = rewriter.create<LLVM::GEPOp>(loc, i8PtrTy, addr, idxs);
+  return gep;
+}
 
 //===----------------------------------------------------------------------===//
 // Unit conversions
@@ -113,35 +130,53 @@ struct SigOpConversion : public ConvertToLLVMPattern {
     auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
 
+    // get or create owner name string
+    Value owner;
+    llvm::StringRef parent = op->getParentOfType<LLVM::LLVMFuncOp>().getName();
+    auto parentSym =
+        module.lookupSymbol<LLVM::GlobalOp>("entity." + parent.str());
+    if (!parentSym) {
+      owner = LLVM::createGlobalString(
+          op->getLoc(), rewriter, "entity." + parent.str(), parent.str() + '\0',
+          LLVM::Linkage::Internal, typeConverter.getDialect());
+    } else {
+      owner = getGlobalString(op->getLoc(), rewriter, typeConverter, parentSym);
+    }
+
+    // get or create signal name
+    Value sigName;
+    auto sigSym =
+        module.lookupSymbol<LLVM::GlobalOp>("sig." + sigOp.name().str());
+    if (!sigSym) {
+      sigName = LLVM::createGlobalString(
+          op->getLoc(), rewriter, "sig." + sigOp.name().str(),
+          sigOp.name().str() + '\0', LLVM::Linkage::Internal,
+          typeConverter.getDialect());
+    } else {
+      sigName = getGlobalString(op->getLoc(), rewriter, typeConverter, sigSym);
+    }
+
     // get or insert library call definition
     auto sigFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
     if (!sigFunc) {
       OpBuilder moduleBuilder(module.getBodyRegion());
-      // alloc_signal function signature: (i8* %state, i32 %sig_index, i1
-      // %value) -> i32 %sig_index
-      auto allocSigFuncTy =
-          LLVM::LLVMType::getFunctionTy(i32Ty, {i8PtrTy, i32Ty, i1Ty}, false);
+      // alloc_signal function signature: (i8* %state, i8* %sig_name, i8*
+      // %sig_owner, i1 %value) -> i32 %sig_index
+      auto allocSigFuncTy = LLVM::LLVMType::getFunctionTy(
+          i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy, i1Ty}, false);
       sigFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
                                                        libCall, allocSigFuncTy);
     }
 
-    // get expected signal index as an attribute
-    auto counterAttr = rewriter.getI32IntegerAttr(counter);
-    // add signal index constant
-    Value sigInd = rewriter.create<LLVM::ConstantOp>(
-        op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
-        counterAttr);
-
     // get state
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // build call arguments vector
-    llvm::SmallVector<Value, 3> args({statePtr, sigInd, transformed.init()});
+    llvm::SmallVector<Value, 3> args(
+        {statePtr, sigName, owner, transformed.init()});
     // replace original operation with the library call
     rewriter.replaceOpWithNewOp<LLVM::CallOp>(
         op, i32Ty, rewriter.getSymbolRefAttr(sigFunc), args);
 
-    // increase index counter
-    counter++;
     return success();
   }
 

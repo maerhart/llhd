@@ -40,6 +40,21 @@ std::string Time::dump() {
 }
 
 //===----------------------------------------------------------------------===//
+// Signal
+//===----------------------------------------------------------------------===//
+
+Signal::Signal(std::string name, std::string owner, int init)
+    : name(name), owner(owner) {
+  value = std::make_unique<int>(init);
+}
+
+std::string Signal::dump() {
+  std::stringstream ss;
+  ss << owner << "/" << name << "  " << *value;
+  return ss.str();
+}
+
+//===----------------------------------------------------------------------===//
 // Slot
 //===----------------------------------------------------------------------===//
 
@@ -48,6 +63,21 @@ bool Slot::operator<(const Slot &rhs) const { return time < rhs.time; }
 bool Slot::operator>(const Slot &rhs) const { return rhs.time < time; }
 
 void Slot::insertChange(int index, int value) { changes[index] = value; }
+
+//===----------------------------------------------------------------------===//
+// UpdateQueue
+//===----------------------------------------------------------------------===//
+void UpdateQueue::insertOrUpdate(Time time, int index, int value) {
+  for (int i = 0; i < c.size(); i++) {
+    if (time == c[i].time) {
+      c[i].insertChange(index, value);
+      return;
+    }
+  }
+  Slot newSlot(time);
+  newSlot.insertChange(index, value);
+  push(newSlot);
+}
 
 //===----------------------------------------------------------------------===//
 // State
@@ -68,8 +98,8 @@ void State::pushQueue(int t, int index, int value) {
 }
 
 /// Add a new signal to the state. Returns the index of the new signal.
-int State::addSignal(int init) {
-  signals.push_back(Signal(init));
+int State::addSignal(std::string name, std::string owner, int init) {
+  signals.push_back(Signal(name, owner, init));
   return signals.size() - 1;
 }
 
@@ -78,22 +108,6 @@ void State::updateSignal(int index, int value) {
   *signals[index].value = value;
 }
 
-//===----------------------------------------------------------------------===//
-// UpdateQueue
-//===----------------------------------------------------------------------===//
-void UpdateQueue::insertOrUpdate(Time time, int index, int value) {
-  for (int i = 0; i < c.size(); i++) {
-    if (time == c[i].time) {
-      c[i].insertChange(index, value);
-      return;
-    }
-  }
-  Slot newSlot(time);
-  newSlot.insertChange(index, value);
-  push(newSlot);
-}
-
 void State::dumpSignal(llvm::raw_ostream &out, int index) {
-
-  out << time.dump() << "  " << index << "  " << *signals[index].value << "\n";
+  out << time.dump() << "  " << signals[index].dump() << "\n";
 }

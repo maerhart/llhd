@@ -1,12 +1,14 @@
 //RUN: llhdc %s --convert-llhd-to-llvm | FileCheck %s
 
-// CHECK: llvm.func @drive_signal(!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32)
-// CHECK-NEXT: llvm.func @probe_signal(!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
-// CHECK-NEXT: llvm.func @alloc_signal(!llvm<"i8*">, !llvm.i32, !llvm.i1) -> !llvm.i32
-// CHECK-NEXT: llvm.func @Foo(%[[STATE:.*]]: !llvm<"i8*">) {
+// CHECK: llvm.func @Foo(%[[STATE:.*]]: !llvm<"i8*">) {
 // CHECK-NEXT: %[[C1:.*]] = llvm.mlir.constant(0 : i1) : !llvm.i1
-// CHECK-NEXT: %[[C2:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
-// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE]], %[[C2]], %[[C1]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1) -> !llvm.i32
+// CHECK-NEXT: %[[ADDR0:.*]] = llvm.mlir.addressof @entity.Foo : !llvm<"[4 x i8]*">
+// CHECK-NEXT: %[[I0:.*]] = llvm.mlir.constant(0 : index) : !llvm.i64
+// CHECK-NEXT: %[[GEP_ENTITY:.*]] = llvm.getelementptr %[[ADDR0]][%[[I0]], %[[I0]]] : (!llvm<"[4 x i8]*">, !llvm.i64, !llvm.i64) -> !llvm<"i8*">
+// CHECK-NEXT: %[[ADDR1:.*]] = llvm.mlir.addressof @sig.toggle : !llvm<"[7 x i8]*">
+// CHECK-NEXT: %[[I1:.*]] = llvm.mlir.constant(0 : index) : !llvm.i64
+// CHECK-NEXT: %[[GEP_SIG:.*]] = llvm.getelementptr %[[ADDR1]][%[[I1]], %[[I1]]] : (!llvm<"[7 x i8]*">, !llvm.i64, !llvm.i64) -> !llvm<"i8*">
+// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE]], %[[GEP_SIG]], %[[GEP_ENTITY]], %[[C1]]) : (!llvm<"i8*">, !llvm<"i8*">, !llvm<"i8*">, !llvm.i1) -> !llvm.i32
 // CHECK-NEXT: %[[CALL2:.*]] = llvm.call @probe_signal(%[[STATE]], %[[CALL1]]) : (!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
 // CHECK-NEXT: %[[B1:.*]] = llvm.bitcast %[[CALL2]] : !llvm<"i8*"> to !llvm<"i1*">
 // CHECK-NEXT: %[[L1:.*]] = llvm.load %[[B1]] : !llvm<"i1*">

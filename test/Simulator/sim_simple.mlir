@@ -1,15 +1,15 @@
 // RUN: llhd-sim %s -n 10 | FileCheck %s
 
-// CHECK: 0ns  0  0
-// CHECK-NEXT: 1ns  0  1
-// CHECK-NEXT: 2ns  0  0
-// CHECK-NEXT: 3ns  0  1
-// CHECK-NEXT: 4ns  0  0
-// CHECK-NEXT: 5ns  0  1
-// CHECK-NEXT: 6ns  0  0
-// CHECK-NEXT: 7ns  0  1
-// CHECK-NEXT: 8ns  0  0
-// CHECK-NEXT: 9ns  0  1
+// CHECK: 0ns  Foo/toggle  0
+// CHECK-NEXT: 1ns  Foo/toggle  1
+// CHECK-NEXT: 2ns  Foo/toggle  0
+// CHECK-NEXT: 3ns  Foo/toggle  1
+// CHECK-NEXT: 4ns  Foo/toggle  0
+// CHECK-NEXT: 5ns  Foo/toggle  1
+// CHECK-NEXT: 6ns  Foo/toggle  0
+// CHECK-NEXT: 7ns  Foo/toggle  1
+// CHECK-NEXT: 8ns  Foo/toggle  0
+// CHECK-NEXT: 9ns  Foo/toggle  1
 llhd.entity @Foo () -> () {
     %0 = llhd.const 0 : i1
     %toggle = llhd.sig "toggle" %0 : i1 -> !llhd.sig<i1>

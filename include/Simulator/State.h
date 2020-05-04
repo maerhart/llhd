@@ -46,9 +46,14 @@ private:
 
 /// The simulator's internal representation of a signal.
 struct Signal {
-  /// Construct a signal with the given initial value.
-  Signal(int init) { value = std::make_unique<int>(init); }
+  /// Construct a signal with the given name, owner and initial value.
+  Signal(std::string name, std::string owner, int init);
 
+  /// Return the signal value in dumpable format: "owner/name  value"
+  std::string dump();
+
+  std::string name;
+  std::string owner;
   std::unique_ptr<int> value;
 };
 
@@ -95,10 +100,10 @@ struct State {
   void pushQueue(int t, int index, int value);
 
   /// Get the signal at position i in the signal list.
-  Signal getSignal(int i);
+  Signal getSignal(int index);
 
   /// Add a new signal to the state. Returns the index of the new signal.
-  int addSignal(int sig);
+  int addSignal(std::string name, std::string owner, int init);
 
   /// Update the signal at position i in the signals list to the given value.
   void updateSignal(int index, int value);
