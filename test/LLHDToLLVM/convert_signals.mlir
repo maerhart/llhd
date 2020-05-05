@@ -17,7 +17,9 @@ llhd.entity @sig_conversions () -> () {
     // CHECK-NEXT: %[[PRBD:.*]] = llvm.load %[[BC]] : !llvm<"i1*">
     %1 = llhd.prb %0 : !llhd.sig<i1> -> i1
     // CHECK-NEXT: %[[TIME:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
-    // CHECK-NEXT: %{{.*}} = llvm.call @drive_signal(%[[STATE]], %[[SIG]], %[[PRBD]], %[[TIME]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32) -> !llvm.void
+    // CHECK-NEXT: %[[DELTA:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
+    // CHECK-NEXT: %[[EPS:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
+    // CHECK-NEXT: %{{.*}} = llvm.call @drive_signal(%[[STATE]], %[[SIG]], %[[PRBD]], %[[TIME]], %[[DELTA]], %[[EPS]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32, !llvm.i32, !llvm.i32) -> !llvm.void
     %t = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
     llhd.drv %0, %1, %t : !llhd.sig<i1>, i1, !llhd.time
 }

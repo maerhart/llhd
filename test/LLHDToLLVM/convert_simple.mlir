@@ -14,8 +14,10 @@
 // CHECK-NEXT: %[[L1:.*]] = llvm.load %[[B1]] : !llvm<"i1*">
 // CHECK-NEXT: %[[C3:.*]] = llvm.mlir.constant(1 : i1) : !llvm.i1
 // CHECK-NEXT: %[[X1:.*]] = llvm.xor %[[L1]], %[[C3]] : !llvm.i1
-// CHECK-NEXT: %[[C4:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
-// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE]], %[[CALL1]], %[[X1]], %[[C4]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32) -> !llvm.void
+// CHECK-NEXT: %[[TIME:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
+// CHECK-NEXT: %[[DELTA:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
+// CHECK-NEXT: %[[EPS:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
+// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE]], %[[CALL1]], %[[X1]], %[[TIME]], %[[DELTA]], %[[EPS]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32, !llvm.i32, !llvm.i32) -> !llvm.void
 // CHECK-NEXT: llvm.return
 // CHECK-NEXT: }
 

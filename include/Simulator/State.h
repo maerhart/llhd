@@ -97,7 +97,7 @@ struct State {
 
   /// Push a new event in the event queue and return the index of the new event
   /// in the queue.
-  void pushQueue(int t, int index, int value);
+  void pushQueue(Time time, int index, int value);
 
   /// Get the signal at position i in the signal list.
   Signal getSignal(int index);

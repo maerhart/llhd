@@ -282,30 +282,43 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     if (!drvFunc) {
       OpBuilder moduleBuilder(module.getBodyRegion());
       // drv function signature: (i8* %state, i32 %sig_index, i1 %new_value, i32
-      // %time) -> ()
+      // %time, i32 %delta, i32 %eps) -> ()
       auto drvFuncTy = LLVM::LLVMType::getFunctionTy(
-          voidTy, {i8PtrTy, i32Ty, i1Ty, i32Ty}, /*isVarArg=*/false);
+          voidTy, {i8PtrTy, i32Ty, i1Ty, i32Ty, i32Ty, i32Ty},
+          /*isVarArg=*/false);
       drvFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
                                                        libCall, drvFuncTy);
     }
 
     // get constant time operation
-    unsigned timeOp = cast<ConstOp>(drvOp.time().getDefiningOp())
-                          .valueAttr()
-                          .dyn_cast<TimeAttr>()
-                          .getTime();
+    auto timeAttr = cast<llhd::ConstOp>(drvOp.time().getDefiningOp())
+                        .valueAttr()
+                        .dyn_cast<TimeAttr>();
     // get real time as an attribute
-    auto timeAttr = rewriter.getI32IntegerAttr(timeOp);
-    // create new time const at the current operation location
-    auto newTimeConst = rewriter.create<LLVM::ConstantOp>(
+    auto realTimeAttr = rewriter.getI32IntegerAttr(timeAttr.getTime());
+    // create new time const operation
+    auto realTimeConst = rewriter.create<LLVM::ConstantOp>(
         op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
-        timeAttr);
+        realTimeAttr);
+    // get the delta step as an attribute
+    auto deltaAttr = rewriter.getI32IntegerAttr(timeAttr.getDelta());
+    // create new delta const operation
+    auto deltaConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
+        deltaAttr);
+    // get the epsilon step as an attribute
+    auto epsAttr = rewriter.getI32IntegerAttr(timeAttr.getEps());
+    // create new eps const operation
+    auto epsConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
+        epsAttr);
 
     // get state pointer from function arguments
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // define library call arguments
-    llvm::SmallVector<Value, 3> args(
-        {statePtr, transformed.signal(), transformed.value(), newTimeConst});
+    llvm::SmallVector<Value, 6> args({statePtr, transformed.signal(),
+                                      transformed.value(), realTimeConst,
+                                      deltaConst, epsConst});
     // create library call
     rewriter.create<LLVM::CallOp>(op->getLoc(), voidTy,
                                   rewriter.getSymbolRefAttr(drvFunc), args);

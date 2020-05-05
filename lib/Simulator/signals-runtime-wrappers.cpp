@@ -28,10 +28,13 @@ int *probe_signal(State *state, int index) {
   return sig.value.get();
 }
 
-void drive_signal(State *state, int index, int value, int time) {
+void drive_signal(State *state, int index, int value, int time, int delta,
+                  int eps) {
   assert(state && "drive_signal: state not found");
+  // create Time struct
+  Time sTime(time, delta, eps);
   // spawn new event
-  state->pushQueue(time, index, value);
+  state->pushQueue(sTime, index, value);
 }
 
 //===----------------------------------------------------------------------===//

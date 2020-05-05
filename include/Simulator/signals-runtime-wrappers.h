@@ -18,8 +18,8 @@ int alloc_signal(mlir::llhd::sim::State *state, char *name, char *owner,
 int *probe_signal(mlir::llhd::sim::State *state, int index);
 
 /// Drive a value onto a signal.
-void drive_signal(mlir::llhd::sim::State *state, int index, int value,
-                  int time);
+void drive_signal(mlir::llhd::sim::State *state, int index, int value, int time,
+                  int delta, int eps);
 
 //===----------------------------------------------------------------------===//
 // Testing methods

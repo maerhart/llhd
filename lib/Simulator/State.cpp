@@ -35,7 +35,7 @@ bool Time::isZero() { return (time == 0 && delta == 0 && eps == 0); }
 
 std::string Time::dump() {
   std::stringstream dumpStr;
-  dumpStr << time << "ns";
+  dumpStr << time << "ns " << delta << "d " << eps << "e";
   return dumpStr.str();
 }
 
@@ -92,8 +92,8 @@ Slot State::popQueue() {
 
 /// Push a new event in the event queue and return the index of the new event
 /// in the queue.
-void State::pushQueue(int t, int index, int value) {
-  Time newTime = time + Time(t, 0, 0);
+void State::pushQueue(Time t, int index, int value) {
+  Time newTime = time + t;
   queue.insertOrUpdate(newTime, index, value);
 }
 
