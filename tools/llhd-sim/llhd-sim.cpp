@@ -3,6 +3,7 @@
 #include "Simulator/Engine.h"
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/Parser.h"
 #include "mlir/Pass/PassManager.h"
@@ -59,6 +60,7 @@ int dumpLLVMIR(mlir::ModuleOp module) {
 int main(int argc, char **argv) {
   registerDialect<llhd::LLHDDialect>();
   registerDialect<LLVM::LLVMDialect>();
+  registerDialect<StandardOpsDialect>();
 
   llhd::initLLHDToLLVMPass();
 
