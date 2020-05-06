@@ -5,12 +5,12 @@ set(LLVM_OPTIONAL_SOURCES
 )
 
 add_mlir_library(LLHDSimState State.cpp)
-target_link_libraries(LLHDSimState LLVMSupport)
+target_link_libraries(LLHDSimState PUBLIC LLVMSupport)
 
 add_mlir_library(llhd-signals-runtime-wrappers  SHARED
-    signals-runtime-wrappers.cpp 
+    signals-runtime-wrappers.cpp
 )
-target_link_libraries(llhd-signals-runtime-wrappers LLHDSimState)
+target_link_libraries(llhd-signals-runtime-wrappers PUBLIC LLHDSimState)
 
 add_mlir_library(LLHDSimEngine Engine.cpp)
 
@@ -20,4 +20,4 @@ set(LIBS
     llhd-signals-runtime-wrappers
 )
 
-target_link_libraries(LLHDSimEngine ${LIBS})
+target_link_libraries(LLHDSimEngine PUBLIC ${LIBS})
