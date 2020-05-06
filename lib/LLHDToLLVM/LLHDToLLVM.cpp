@@ -161,18 +161,20 @@ struct SigOpConversion : public ConvertToLLVMPattern {
     if (!sigFunc) {
       OpBuilder moduleBuilder(module.getBodyRegion());
       // alloc_signal function signature: (i8* %state, i8* %sig_name, i8*
-      // %sig_owner, i1 %value) -> i32 %sig_index
+      // %sig_owner, i32 %value) -> i32 %sig_index
       auto allocSigFuncTy = LLVM::LLVMType::getFunctionTy(
-          i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy, i1Ty}, false);
+          i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy, i32Ty}, false);
       sigFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
                                                        libCall, allocSigFuncTy);
     }
 
+    // extend value to i32
+    auto zext =
+        rewriter.create<LLVM::ZExtOp>(op->getLoc(), i32Ty, transformed.init());
     // get state
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // build call arguments vector
-    llvm::SmallVector<Value, 3> args(
-        {statePtr, sigName, owner, transformed.init()});
+    llvm::SmallVector<Value, 4> args({statePtr, sigName, owner, zext});
     // replace original operation with the library call
     rewriter.replaceOpWithNewOp<LLVM::CallOp>(
         op, i32Ty, rewriter.getSymbolRefAttr(sigFunc), args);
@@ -281,10 +283,10 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     auto drvFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
     if (!drvFunc) {
       OpBuilder moduleBuilder(module.getBodyRegion());
-      // drv function signature: (i8* %state, i32 %sig_index, i1 %new_value, i32
-      // %time, i32 %delta, i32 %eps) -> ()
+      // drv function signature: (i8* %state, i32 %sig_index, i32 %new_value,
+      // i32 %time, i32 %delta, i32 %eps) -> ()
       auto drvFuncTy = LLVM::LLVMType::getFunctionTy(
-          voidTy, {i8PtrTy, i32Ty, i1Ty, i32Ty, i32Ty, i32Ty},
+          voidTy, {i8PtrTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty},
           /*isVarArg=*/false);
       drvFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
                                                        libCall, drvFuncTy);
@@ -313,12 +315,14 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
         op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
         epsAttr);
 
+    // extend value to i32
+    auto zext =
+        rewriter.create<LLVM::ZExtOp>(op->getLoc(), i32Ty, transformed.value());
     // get state pointer from function arguments
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // define library call arguments
-    llvm::SmallVector<Value, 6> args({statePtr, transformed.signal(),
-                                      transformed.value(), realTimeConst,
-                                      deltaConst, epsConst});
+    llvm::SmallVector<Value, 6> args({statePtr, transformed.signal(), zext,
+                                      realTimeConst, deltaConst, epsConst});
     // create library call
     rewriter.create<LLVM::CallOp>(op->getLoc(), voidTy,
                                   rewriter.getSymbolRefAttr(drvFunc), args);

@@ -8,7 +8,8 @@
 // CHECK-NEXT: %[[ADDR1:.*]] = llvm.mlir.addressof @sig.toggle : !llvm<"[7 x i8]*">
 // CHECK-NEXT: %[[I1:.*]] = llvm.mlir.constant(0 : index) : !llvm.i64
 // CHECK-NEXT: %[[GEP_SIG:.*]] = llvm.getelementptr %[[ADDR1]][%[[I1]], %[[I1]]] : (!llvm<"[7 x i8]*">, !llvm.i64, !llvm.i64) -> !llvm<"i8*">
-// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE]], %[[GEP_SIG]], %[[GEP_ENTITY]], %[[C1]]) : (!llvm<"i8*">, !llvm<"i8*">, !llvm<"i8*">, !llvm.i1) -> !llvm.i32
+// CHECK-NEXT: %[[ZEXT0:.*]] = llvm.zext %[[C1]] : !llvm.i1 to !llvm.i32
+// CHECK-NEXT: %[[CALL1:.*]] = llvm.call @alloc_signal(%[[STATE]], %[[GEP_SIG]], %[[GEP_ENTITY]], %[[ZEXT0]]) : (!llvm<"i8*">, !llvm<"i8*">, !llvm<"i8*">, !llvm.i32) -> !llvm.i32
 // CHECK-NEXT: %[[CALL2:.*]] = llvm.call @probe_signal(%[[STATE]], %[[CALL1]]) : (!llvm<"i8*">, !llvm.i32) -> !llvm<"i8*">
 // CHECK-NEXT: %[[B1:.*]] = llvm.bitcast %[[CALL2]] : !llvm<"i8*"> to !llvm<"i1*">
 // CHECK-NEXT: %[[L1:.*]] = llvm.load %[[B1]] : !llvm<"i1*">
@@ -17,7 +18,8 @@
 // CHECK-NEXT: %[[TIME:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
 // CHECK-NEXT: %[[DELTA:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
 // CHECK-NEXT: %[[EPS:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
-// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE]], %[[CALL1]], %[[X1]], %[[TIME]], %[[DELTA]], %[[EPS]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i1, !llvm.i32, !llvm.i32, !llvm.i32) -> !llvm.void
+// CHECK-NEXT: %[[ZEXT1:.*]] = llvm.zext %[[X1]] : !llvm.i1 to !llvm.i32
+// CHECK-NEXT: %[[CALL3:.*]] = llvm.call @drive_signal(%[[STATE]], %[[CALL1]], %[[ZEXT1]], %[[TIME]], %[[DELTA]], %[[EPS]]) : (!llvm<"i8*">, !llvm.i32, !llvm.i32, !llvm.i32, !llvm.i32, !llvm.i32) -> !llvm.void
 // CHECK-NEXT: llvm.return
 // CHECK-NEXT: }
 
