@@ -40,11 +40,17 @@ int Engine::simulate(int n) {
     state->time = pop.time;
 
     // dump changes, only if actually changed
+    unsigned actual = 0;
     for (auto change : pop.changes) {
       if (*state->signals[change.first].value == change.second)
         continue;
       state->updateSignal(change.first, change.second);
       state->dumpSignal(out, change.first);
+      actual++;
+    }
+    // continue if no updates at non-zero time
+    if (actual == 0 && !state->time.isZero()) {
+      continue;
     }
 
     // run entity
