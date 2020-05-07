@@ -33,3 +33,40 @@ func @convert_bitwise_i32(%lhs : i32, %rhs : i32) {
 
     return
 }
+
+// CHECK-LABEL: convert_shl_i5_i2_i2
+// CHECK-SAME: %[[BASE:.*]]: !llvm.i5,
+// CHECK-SAME: %[[HIDDEN:.*]]: !llvm.i2,
+// CHECK-SAME: %[[AMOUNT:.*]]: !llvm.i2
+func @convert_shl_i5_i2_i2(%base : i5, %hidden : i2, %amount : i2) {
+    // CHECK-NEXT: %[[ZEXTB:.*]] = llvm.zext %[[BASE]] : !llvm.i5 to !llvm.i7
+    // CHECK-NEXT: %[[ZEXTH:.*]] = llvm.zext %[[HIDDEN]] : !llvm.i2 to !llvm.i7
+    // CHECK-NEXT: %[[ZEXTA:.*]] = llvm.zext %[[AMOUNT]] : !llvm.i2 to !llvm.i7
+    // CHECK-NEXT: %[[HDNW:.*]] = llvm.mlir.constant(2 : i7) : !llvm.i7
+    // CHECK-NEXT: %[[SHB:.*]] = llvm.shl %[[ZEXTB]], %[[HDNW]] : !llvm.i7
+    // CHECK-NEXT: %[[COMB:.*]] = llvm.or %[[SHB]], %[[ZEXTH]] : !llvm.i7
+    // CHECK-NEXT: %[[SA:.*]] = llvm.sub %[[HDNW]], %[[ZEXTA]] : !llvm.i
+    // CHECK-NEXT: %[[SH:.*]] = llvm.lshr %[[COMB]], %[[SA]] : !llvm.i7
+    // CHECK-NEXT: %{{.*}} = llvm.trunc %[[SH]] : !llvm.i7 to !llvm.i5
+    %0 = llhd.shl %base, %hidden, %amount : (i5, i2, i2) -> i5
+
+    return
+}
+
+// CHECK-LABEL: convert_shr_i5_i2_i2
+// CHECK-SAME: %[[BASE:.*]]: !llvm.i5,
+// CHECK-SAME: %[[HIDDEN:.*]]: !llvm.i2,
+// CHECK-SAME: %[[AMOUNT:.*]]: !llvm.i2
+func @convert_shr_i5_i2_i2(%base : i5, %hidden : i2, %amount : i2) {
+    // CHECK-NEXT: %[[ZEXTB:.*]] = llvm.zext %[[BASE]] : !llvm.i5 to !llvm.i7
+    // CHECK-NEXT: %[[ZEXTH:.*]] = llvm.zext %[[HIDDEN]] : !llvm.i2 to !llvm.i7
+    // CHECK-NEXT: %[[ZEXTA:.*]] = llvm.zext %[[AMOUNT]] : !llvm.i2 to !llvm.i7
+    // CHECK-NEXT: %[[BASEW:.*]] = llvm.mlir.constant(5 : i7) : !llvm.i7
+    // CHECK-NEXT: %[[SHH:.*]] = llvm.shl %[[ZEXTH]], %[[BASEW]] : !llvm.i7
+    // CHECK-NEXT: %[[COMB:.*]] = llvm.or %[[SHH]], %[[ZEXTB]] : !llvm.i7
+    // CHECK-NEXT: %[[SH:.*]] = llvm.lshr %[[COMB]], %[[ZEXTA]] : !llvm.i7
+    // CHECK-NEXT: %{{.*}} = llvm.trunc %[[SH]] : !llvm.i7 to !llvm.i5
+    %0 = llhd.shr %base, %hidden, %amount : (i5, i2, i2) -> i5
+
+    return
+}

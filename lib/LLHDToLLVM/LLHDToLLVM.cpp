@@ -374,6 +374,123 @@ struct NotOpConversion : public ConvertToLLVMPattern {
   }
 };
 
+/// Convert an `llhd.shr` operation to llvm. All the operands are extended to
+/// the width obtained by combining the hidden and base values. This combined
+/// value is then shifted (exposing the hidden value) and truncated to the base
+/// length
+struct ShrOpConversion : public ConvertToLLVMPattern {
+  explicit ShrOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(llhd::ShrOp::getOperationName(), ctx,
+                             typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    OperandAdaptor<ShrOp> transformed(operands);
+    auto shrOp = cast<ShrOp>(op);
+    assert(!(shrOp.getType().getKind() == llhd::LLHDTypes::Sig) &&
+           "sig not yet supported");
+
+    // get widths
+    auto baseWidth = shrOp.getType().getIntOrFloatBitWidth();
+    auto hdnWidth = shrOp.hidden().getType().getIntOrFloatBitWidth();
+    auto full = baseWidth + hdnWidth;
+
+    auto tmpTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), full);
+
+    // extend all operands to the base and hidden combined  width
+    auto baseZext =
+        rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy, transformed.base());
+    auto hdnZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                 transformed.hidden());
+    auto amntZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                  transformed.amount());
+
+    // shift hidden operand to prepend to full value
+    auto hdnShAmnt = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), tmpTy,
+        rewriter.getIntegerAttr(rewriter.getIntegerType(full), baseWidth));
+    auto hdnSh =
+        rewriter.create<LLVM::ShlOp>(op->getLoc(), tmpTy, hdnZext, hdnShAmnt);
+
+    // combine base and hidden operands
+    auto combined =
+        rewriter.create<LLVM::OrOp>(op->getLoc(), tmpTy, hdnSh, baseZext);
+
+    // perform the right shift
+    auto shifted =
+        rewriter.create<LLVM::LShrOp>(op->getLoc(), tmpTy, combined, amntZext);
+
+    // truncate to final width
+    rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, transformed.base().getType(),
+                                               shifted);
+
+    return success();
+  }
+};
+
+/// Convert an `llhd.shr` operation to llvm. All the operands are extended to
+/// the width obtained by combining the hidden and base values. This combined
+/// value is then shifted right by `hidden_width - amount` (exposing the hidden
+/// value) and truncated to the base length
+struct ShlOpConversion : public ConvertToLLVMPattern {
+  explicit ShlOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(llhd::ShlOp::getOperationName(), ctx,
+                             typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    OperandAdaptor<ShlOp> transformed(operands);
+    auto shlOp = cast<ShlOp>(op);
+    assert(!(shlOp.getType().getKind() == llhd::LLHDTypes::Sig) &&
+           "sig not yet supported");
+
+    // get widths
+    auto baseWidth = shlOp.getType().getIntOrFloatBitWidth();
+    auto hdnWidth = shlOp.hidden().getType().getIntOrFloatBitWidth();
+    auto full = baseWidth + hdnWidth;
+
+    auto tmpTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), full);
+
+    // extend all operands to the base and hidden combined  width
+    auto baseZext =
+        rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy, transformed.base());
+    auto hdnZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                 transformed.hidden());
+    auto amntZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                  transformed.amount());
+
+    // shift hidden operand to
+    // prepend to full value
+    auto hdnWidthConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), tmpTy,
+        rewriter.getIntegerAttr(rewriter.getIntegerType(full), hdnWidth));
+    auto baseSh = rewriter.create<LLVM::ShlOp>(op->getLoc(), tmpTy, baseZext,
+                                               hdnWidthConst);
+
+    // combine base and hidden operands
+    auto combined =
+        rewriter.create<LLVM::OrOp>(op->getLoc(), tmpTy, baseSh, hdnZext);
+
+    // get the final right shift amount
+    auto shrAmnt = rewriter.create<LLVM::SubOp>(op->getLoc(), tmpTy,
+                                                hdnWidthConst, amntZext);
+
+    // perform the right shift
+    auto shifted =
+        rewriter.create<LLVM::LShrOp>(op->getLoc(), tmpTy, combined, shrAmnt);
+
+    // truncate to final width
+    rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, transformed.base().getType(),
+                                               shifted);
+
+    return success();
+  }
+};
+
 using AndOpConversion = OneToOneConvertToLLVMPattern<llhd::AndOp, LLVM::AndOp>;
 using OrOpConversion = OneToOneConvertToLLVMPattern<llhd::OrOp, LLVM::OrOp>;
 using XorOpConversion = OneToOneConvertToLLVMPattern<llhd::XorOp, LLVM::XOrOp>;
@@ -426,7 +543,8 @@ void llhd::populateLLHDToLLVMConversionPatterns(
   // constant conversion patterns
   patterns.insert<ConstOpConversion>(ctx, converter);
   // bitwise conversion patterns
-  patterns.insert<NotOpConversion>(ctx, converter);
+  patterns.insert<NotOpConversion, ShrOpConversion, ShlOpConversion>(ctx,
+                                                                     converter);
   // patterns.insert<NotOpConversion, AndOpConversion>(ctx, converter);
   patterns.insert<AndOpConversion, OrOpConversion, XorOpConversion>(converter);
   // unit conversion patterns
