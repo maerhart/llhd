@@ -31,13 +31,13 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-7
+        key: ${{ runner.os }}-llvm-install-8
     - name: Get LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
       with:
         repository: 'llvm/llvm-project'
-        ref: '7c649b58f02996fc89032df20d1377f8ef76f70c'
+        ref: 'eef95f2746c3347b8dad19091ffb82a88d73acd3'
         path: 'llvm'
     - name: Install LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
@@ -57,7 +57,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-7
+        key: ${{ runner.os }}-llvm-install-8
     - name: Get LLHD
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       uses: actions/checkout@v2
