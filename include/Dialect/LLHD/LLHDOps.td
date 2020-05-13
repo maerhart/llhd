@@ -76,7 +76,7 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
     }];
 
     let arguments = (ins StrAttr:$name, AnySignlessInteger:$init);
-    let results = (outs LLHD_SigType);
+    let results = (outs LLHD_AnySigType);
 
     let assemblyFormat = "$name $init attr-dict `:` type($init) `->` type(results)";
 
@@ -106,7 +106,7 @@ def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins LLHD_SigType:$signal);
+    let arguments = (ins LLHD_AnySigType:$signal);
     let results = (outs AnySignlessInteger);
 
     let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type(results)";
@@ -145,7 +145,7 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
         ```
     }];
 
-    let arguments = (ins LLHD_SigType:$signal,
+    let arguments = (ins LLHD_AnySigType:$signal,
                          AnySignlessInteger:$value,
                          LLHD_TimeType:$time,
                          Optional<I1>:$enable);
@@ -199,7 +199,7 @@ def LLHD_WaitOp : LLHD_Op<"wait",
         ```
     }];
 
-    let arguments = (ins Variadic<LLHD_SigType>:$obs,
+    let arguments = (ins Variadic<LLHD_AnySigType>:$obs,
                          Variadic<LLHD_TimeType>:$time,
                          Variadic<AnyType>:$destOps,
                          I32ElementsAttr:$operand_segment_sizes);
@@ -433,10 +433,10 @@ def LLHD_ShlOp : LLHD_Op<"shl", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base,
-                         AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$base,
+                         AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$hidden,
                          AnySignlessInteger:$amount);
-    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$result);
 
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
@@ -473,10 +473,10 @@ def LLHD_ShrOp : LLHD_Op<"shr", [NoSideEffect]> {
     }];
 
     // TODO: adjust type T and Th to include arrays and pointers
-    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$base,
-                         AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$hidden,
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$base,
+                         AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$hidden,
                          AnySignlessInteger:$amount);
-    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_SigType]>:$result);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>:$result);
 
     let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 
@@ -672,8 +672,8 @@ def LLHD_InstOp : LLHD_Op<"inst", [CallOpInterface, HasParent<"EntityOp">,
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$callee,
-                         Variadic<LLHD_SigType>:$inputs,
-                         Variadic<LLHD_SigType>:$outputs);
+                         Variadic<LLHD_AnySigType>:$inputs,
+                         Variadic<LLHD_AnySigType>:$outputs);
 
     let assemblyFormat = [{
         $callee `(` $inputs `)` `->` `(` $outputs `)` attr-dict `:`

@@ -74,11 +74,7 @@ static Type parseSigType(DialectAsmParser &parser) {
                           "type.");
     return nullptr;
   }
-  loc = parser.getCurrentLocation();
-  if (!underlyingType.isa<IntegerType>() && !underlyingType.isa<TimeType>()) {
-    parser.emitError(loc, "Illegal signal type: ") << underlyingType;
-    return Type();
-  }
+
   if (parser.parseGreater())
     return Type();
   return SigType::get(underlyingType);
@@ -312,15 +308,6 @@ private:
 SigType SigType::get(mlir::Type underlyingType) {
   return Base::get(underlyingType.getContext(), LLHDTypes::Sig, underlyingType);
 };
-
-LogicalResult SigType::verifyConstructionInvariants(Location loc,
-                                                    Type underlyingType) {
-  // check whether the given type is legal
-  if (!underlyingType.isa<IntegerType>() && !underlyingType.isa<TimeType>())
-    return emitError(loc) << "The provided signal type " << underlyingType
-                          << " is not legal";
-  return success();
-}
 
 mlir::Type SigType::getUnderlyingType() {
   return getImpl()->getUnderlyingType();

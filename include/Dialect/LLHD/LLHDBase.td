@@ -23,11 +23,16 @@ def LLHD_Dialect : Dialect {
 // LLHD type definitions
 //===----------------------------------------------------------------------===//
 
-// LLHD sig type
-def LLHD_SigType : Type<CPred<"$_self.isa<SigType>()">, "LLHD sig type">;
-
 // LLHD Time Type
-def LLHD_TimeType : Type<CPred<"$_self.isa<TimeType>()">, "LLHD time type">;
+def LLHD_TimeType : Type<CPred<"$_self.isa<TimeType>()">, "LLHD time type">,
+                    BuildableType<"TimeType::get($_builder.getContext())">;
+
+// LLHD sig type
+class LLHD_SigType<list<Type> allowedTypes>
+    : ContainerType<AnyTypeOf<allowedTypes>, CPred<"$_self.isa<SigType>()">,
+        "$_self.cast<SigType>().getUnderlyingType()", "LLHD sig type">;
+
+def LLHD_AnySigType : LLHD_SigType<[AnySignlessInteger, LLHD_TimeType]>;
 
 //===----------------------------------------------------------------------===//
 // LLDH attribute definitions

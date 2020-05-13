@@ -56,9 +56,6 @@ public:
   /// Get a new instance of llhd sig type
   static SigType get(mlir::Type underlyingType);
 
-  /// Verify construction invariants, passed to get and getChecked
-  static LogicalResult verifyConstructionInvariants(Location loc,
-                                                    Type underlyingType);
   /// The underlying type of the sig type
   Type getUnderlyingType();
 
