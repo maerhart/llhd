@@ -31,7 +31,7 @@ llhd.proc @prbAndWait(%arg0 : !llhd.sig<i64>) -> () {
     br ^bb1
 ^bb1:
     %0 = llhd.prb %arg0 : !llhd.sig<i64>
-    llhd.wait %arg0, ^bb1 : !llhd.sig<i64>
+    llhd.wait (%arg0 : !llhd.sig<i64>), ^bb1
 }
 
 // Check wait with observing probed signals
@@ -42,7 +42,7 @@ llhd.proc @prbAndWaitMoreObserved(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i64>
     br ^bb1
 ^bb1:
     %0 = llhd.prb %arg0 : !llhd.sig<i64>
-    llhd.wait %arg0, %arg1, ^bb1 : !llhd.sig<i64>, !llhd.sig<i64>
+    llhd.wait (%arg0, %arg1 : !llhd.sig<i64>, !llhd.sig<i64>), ^bb1
 }
 
 // -----
@@ -97,7 +97,7 @@ llhd.proc @noOptionalTime() -> () {
 ^bb1:
     %time = llhd.const #llhd.time<0ns, 0d, 0e> : !llhd.time
     // expected-error @+1 {{Process-lowering: llhd.wait terminators with optional time argument cannot be lowered to structural LLHD.}}
-    llhd.wait for %time, ^bb1 : !llhd.time
+    llhd.wait for %time, ^bb1
 }
 
 // -----

@@ -43,7 +43,7 @@ void ProcessLoweringPass::runOnOperation() {
       }
       if (auto wait = dyn_cast<llhd::WaitOp>(last.getTerminator())) {
         // No optional time argument is allowed
-        if (wait.time().size() != 0) {
+        if (wait.time()) {
           wait.emitOpError(
               "Process-lowering: llhd.wait terminators with optional time "
               "argument cannot be lowered to structural LLHD.");
