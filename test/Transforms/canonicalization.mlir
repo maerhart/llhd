@@ -159,7 +159,7 @@ func @const_hoisting(%sig : !llhd.sig<i32>) {
 ^bb1:
     %0 = llhd.const -1 : i32
     %1 = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-    // CHECK-NEXT: llhd.drv %[[SIG]], %[[C0]], %[[TIME]] : !llhd.sig<i32>, i32, !llhd.time
-    llhd.drv %sig, %0, %1 : !llhd.sig<i32>, i32, !llhd.time
+    // CHECK-NEXT: llhd.drv %[[SIG]], %[[C0]] after %[[TIME]] : !llhd.sig<i32>
+    llhd.drv %sig, %0 after %1 : !llhd.sig<i32>
     br ^bb1
 }
