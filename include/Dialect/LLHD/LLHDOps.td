@@ -62,17 +62,17 @@ def LLHD_SigOp : LLHD_Op<"sig",
        **Custom syntax:**
 
        ```
-       sig-op ::= ssa-id `=` `llhd.sig` sig-name ssa-init attr-dict `:` init-type `->` !llhd.sig<init-type>
+       sig-op ::= ssa-id `=` `llhd.sig` sig-name ssa-init attr-dict `:` init-type
        ```
 
        **Examples:**
 
        ```
        %init_i64 = llhd.const 123 : i64
-       %sig_i64 = llhd.sig "foo" %init_64 : i64 -> !llhd.sig<i64>
+       %sig_i64 = llhd.sig "foo" %init_64 : i64
 
        %init_i1 = llhd.const 1 : i1
-       %sig_i1 = llhd.sig "bar" %init_i1 : i1 -> !llhd.sig<i1>
+       %sig_i1 = llhd.sig "bar" %init_i1 : i1
        ```
        The first `llhd.sig` instruction creates a new signal named "foo", carrying an `i64`
        type with initial value of 123, while the second one creates a new signal
@@ -82,7 +82,7 @@ def LLHD_SigOp : LLHD_Op<"sig",
     let arguments = (ins StrAttr:$name, AnySignlessInteger:$init);
     let results = (outs LLHD_AnySigType:$result);
 
-    let assemblyFormat = "$name $init attr-dict `:` type($init) `->` type($result)";
+    let assemblyFormat = "$name $init attr-dict `:` type($init)";
 }
 
 def LLHD_PrbOp : LLHD_Op<"prb",
@@ -100,22 +100,22 @@ def LLHD_PrbOp : LLHD_Op<"prb",
         **Custom syntax:**
 
         ```
-        prb-op ::= ssa-id `=` `llhd.prb` ssa-sig attr-dict `:` !llhd.sig<type> `->` type
+        prb-op ::= ssa-id `=` `llhd.prb` ssa-sig attr-dict `:` !llhd.sig<type>
         ```
 
         **Examples:***
 
         ```
         %const_i1 = llhd.const 1 : i1
-        %sig_i1 = llhd.sig %const_i1 : i1 -> !llhd.sig<i1>
-        %prbd = llhd.prb %sig_i1 : !llhd.sig<i1> -> i1
+        %sig_i1 = llhd.sig %const_i1 : i1
+        %prbd = llhd.prb %sig_i1 : !llhd.sig<i1>
         ```
     }];
 
     let arguments = (ins LLHD_AnySigType:$signal);
     let results = (outs AnySignlessInteger:$result);
 
-    let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type($result)";
+    let assemblyFormat = "$signal attr-dict `:` type($signal)";
 }
 
 def LLHD_DrvOp : LLHD_Op<"drv",
@@ -135,7 +135,7 @@ def LLHD_DrvOp : LLHD_Op<"drv",
         **Custom Syntax:**
 
         ```
-        drv-op ::= `llhd.drv` ssa-signal `,` ssa-const `,` ssa-time `,` ssa-enable `:` !llhd.sig<const-type> `,` const-type `,` time-type `,` i1
+        drv-op ::= `llhd.drv` ssa-signal `,` ssa-const `after` ssa-time (`if` ssa-enable)? `:` !llhd.sig<const-type>
         ```
 
         **Examples:**
@@ -144,11 +144,11 @@ def LLHD_DrvOp : LLHD_Op<"drv",
         %init = llhd.const 1 : i1
         %en = llhd.const 0 : i1
         %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-        %sig = llhd.sig %init : i1 -> !llhd.sig<i1>
+        %sig = llhd.sig %init : i1
         %new = llhd.not %init : i1
 
-        llhd.drv %sig, %new, %time : !llhd.sig<i1>, i1, !llhd.time
-        llhd.drv %sig, %new, %time, %en : !llhd.sig<i1>, i1, !llhd.time, i1
+        llhd.drv %sig, %new after %time : !llhd.sig<i1>
+        llhd.drv %sig, %new after %time if %en : !llhd.sig<i1>
         ```
     }];
 
@@ -157,7 +157,9 @@ def LLHD_DrvOp : LLHD_Op<"drv",
                          LLHD_TimeType:$time,
                          Optional<I1>:$enable);
 
-    let assemblyFormat = "operands attr-dict `:` type(operands)";
+    let assemblyFormat = [{
+        $signal `,` $value `after` $time ( `if` $enable^ )? attr-dict `:` type($signal)
+    }];
 }
 
 //===----------------------------------------------------------------------===//

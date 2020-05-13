@@ -8,7 +8,7 @@
     // CHECK-NEXT: %[[C0:.*]] = llhd.const 1
     %0 = llhd.const 1 : i64
     // CHECK-NEXT: %[[P0:.*]] = llhd.prb %[[ARG0]]
-    %1 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
+    %1 = llhd.prb %arg0 : !llhd.sig<i64>
     "llhd.terminator"() {} : () -> ()
 // CHECK-NEXT: }
 }) {sym_name="foo", ins=2, type=(!llhd.sig<i64>, !llhd.sig<i64>, !llhd.sig<i64>)->()} : () -> ()

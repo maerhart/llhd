@@ -30,7 +30,7 @@ llhd.proc @prbAndWait(%arg0 : !llhd.sig<i64>) -> () {
     // CHECK-NEXT: }
     br ^bb1
 ^bb1:
-    %0 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
+    %0 = llhd.prb %arg0 : !llhd.sig<i64>
     llhd.wait %arg0, ^bb1 : !llhd.sig<i64>
 }
 
@@ -41,7 +41,7 @@ llhd.proc @prbAndWaitMoreObserved(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i64>
     // CHECK-NEXT: }
     br ^bb1
 ^bb1:
-    %0 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
+    %0 = llhd.prb %arg0 : !llhd.sig<i64>
     llhd.wait %arg0, %arg1, ^bb1 : !llhd.sig<i64>, !llhd.sig<i64>
 }
 
@@ -51,7 +51,7 @@ llhd.proc @prbAndWaitMoreObserved(%arg0 : !llhd.sig<i64>, %arg1 : !llhd.sig<i64>
 llhd.proc @prbAndWaitNotObserved(%arg0 : !llhd.sig<i64>) -> () {
     br ^bb1
 ^bb1:
-    %0 = llhd.prb %arg0 : !llhd.sig<i64> -> i64
+    %0 = llhd.prb %arg0 : !llhd.sig<i64>
     // expected-error @+1 {{Process-lowering: The wait terminator is required to have all probed signals as arguments!}}
     llhd.wait ^bb1
 }
@@ -63,7 +63,7 @@ llhd.proc @prbAndWaitNotObserved(%arg0 : !llhd.sig<i64>) -> () {
 llhd.proc @multipleOpsInEntryBlock(%arg0 : !llhd.sig<i64>) -> () {
     %time = llhd.const #llhd.time<0ns, 0d, 0e> : !llhd.time
     %value = llhd.const 42 : i64
-    llhd.drv %arg0, %value, %time : !llhd.sig<i64>, i64, !llhd.time
+    llhd.drv %arg0, %value after %time : !llhd.sig<i64>
     br ^bb1
 ^bb1:
     llhd.wait ^bb1

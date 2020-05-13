@@ -31,7 +31,7 @@ llhd.entity @check_entity_inline() -> (%out : !llhd.sig<i32>) {
     // CHECK-NEXT: }
     %1 = call @simple() : () -> i32
     %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-    llhd.drv %out, %1, %time : !llhd.sig<i32>, i32, !llhd.time
+    llhd.drv %out, %1 after %time : !llhd.sig<i32>
 }
 
 // CHECK-LABEL: @check_proc_inline
@@ -46,12 +46,12 @@ llhd.proc @check_proc_inline(%arg : !llhd.sig<i1>) -> (%out : !llhd.sig<i32>) {
     // CHECK-NEXT: br ^[[BB3]](%[[C1]] : i32)
     // CHECK-NEXT: ^[[BB3]](%[[A:.*]]: i32):
     // CHECK-NEXT: %[[C2:.*]] = llhd.const
-    // CHECK-NEXT: llhd.drv %{{.*}}, %[[A]], %[[C2]] : !llhd.sig<i32>, i32, !llhd.time
+    // CHECK-NEXT: llhd.drv %{{.*}}, %[[A]] after %[[C2]] : !llhd.sig<i32>
     // CHECK-NEXT: llhd.halt
     // CHECK-NEXT: }
-    %0 = llhd.prb %arg : !llhd.sig<i1> -> i1
+    %0 = llhd.prb %arg : !llhd.sig<i1>
     %1 = call @complex(%0) : (i1) -> i32
     %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
-    llhd.drv %out, %1, %time : !llhd.sig<i32>, i32, !llhd.time
+    llhd.drv %out, %1 after %time : !llhd.sig<i32>
     llhd.halt
 }
