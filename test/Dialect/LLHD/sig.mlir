@@ -42,7 +42,7 @@ func @check_drv(%sigI1 : !llhd.sig<i1>, %sigI64 : !llhd.sig<i64>, %cI1 : i1, %cI
 
 // -----
 
-// expected-error @+3 {{The operand type is not equal to the signal type. Expected 'i32' but got 'i1'}}
+// expected-error @+3 {{failed to verify that type of 'init' and underlying type of 'signal' have to match.}}
 llhd.entity @check_illegal_sig () -> () {
     %cI1 = llhd.const 0 : i1
     %sig1 = llhd.sig "foo" %cI1 : i1 -> !llhd.sig<i32>
@@ -50,14 +50,14 @@ llhd.entity @check_illegal_sig () -> () {
 
 // -----
 
-// expected-error @+2 {{The operand type is not equal to the signal type. Expected 'i1' but got 'i32'}}
+// expected-error @+2 {{failed to verify that type of 'result' and underlying type of 'signal' have to match.}}
 llhd.entity @check_illegal_prb (%sig : !llhd.sig<i1>) -> () {
     %prb = llhd.prb %sig : !llhd.sig<i1> -> i32
 }
 
 // -----
 
-// expected-error @+4 {{The new value's type is not equal to the signal type. Expected 'i1' but got 'i32'}}
+// expected-error @+4 {{failed to verify that type of 'value' and underlying type of 'signal' have to match.}}
 llhd.entity @check_illegal_drv (%sig : !llhd.sig<i1>) -> () {
     %c = llhd.const 0 : i32
     %time = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time

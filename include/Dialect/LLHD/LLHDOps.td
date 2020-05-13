@@ -45,7 +45,11 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
 //=== Signal Operations
 //===----------------------------------------------------------------------===//
 
-def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
+def LLHD_SigOp : LLHD_Op<"sig",
+        [HasParent<"EntityOp">,
+         TypesMatchWith<"type of 'init' and underlying type of 'signal' have to match.",
+                        "init", "result",
+                        "SigType::get($_self)">]> {
     let summary = "Create a signal.";
 
     let description = [{
@@ -76,14 +80,16 @@ def LLHD_SigOp : LLHD_Op<"sig", [HasParent<"EntityOp">]> {
     }];
 
     let arguments = (ins StrAttr:$name, AnySignlessInteger:$init);
-    let results = (outs LLHD_AnySigType);
+    let results = (outs LLHD_AnySigType:$result);
 
-    let assemblyFormat = "$name $init attr-dict `:` type($init) `->` type(results)";
-
-    let verifier = [{ return ::verify(*this); }];
+    let assemblyFormat = "$name $init attr-dict `:` type($init) `->` type($result)";
 }
 
-def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
+def LLHD_PrbOp : LLHD_Op<"prb",
+        [NoSideEffect,
+         TypesMatchWith<"type of 'result' and underlying type of 'signal' have to match.",
+                        "signal", "result",
+                        "$_self.cast<SigType>().getUnderlyingType()">]> {
     let summary = "Probe a signal.";
 
     let description = [{
@@ -107,14 +113,15 @@ def LLHD_PrbOp : LLHD_Op<"prb", [NoSideEffect]> {
     }];
 
     let arguments = (ins LLHD_AnySigType:$signal);
-    let results = (outs AnySignlessInteger);
+    let results = (outs AnySignlessInteger:$result);
 
-    let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type(results)";
-
-    let verifier = [{ return ::verify(*this); }];
+    let assemblyFormat = "$signal attr-dict `:` type($signal) `->` type($result)";
 }
 
-def LLHD_DrvOp : LLHD_Op<"drv"> {
+def LLHD_DrvOp : LLHD_Op<"drv",
+        [TypesMatchWith<"type of 'value' and underlying type of 'signal' have to match.",
+                        "signal", "value",
+                        "$_self.cast<SigType>().getUnderlyingType()">]> {
     let summary = "Drive a value into a signal.";
 
     let description = [{
@@ -151,8 +158,6 @@ def LLHD_DrvOp : LLHD_Op<"drv"> {
                          Optional<I1>:$enable);
 
     let assemblyFormat = "operands attr-dict `:` type(operands)";
-
-    let verifier = [{ return ::verify(*this); }];
 }
 
 //===----------------------------------------------------------------------===//

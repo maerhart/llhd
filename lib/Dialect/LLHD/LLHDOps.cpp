@@ -44,54 +44,6 @@ OpFoldResult llhd::ConstOp::fold(ArrayRef<Attribute> operands) {
   return value();
 }
 
-// Sig Op
-
-/// Verify the construction invariants of a sig operation.
-static LogicalResult verify(llhd::SigOp op) {
-  // cast the result type to sig
-  auto resultType = op.getType().dyn_cast<llhd::SigType>();
-
-  // check the operand type matches the result type
-  if (op.init().getType() != resultType.getUnderlyingType())
-    return op.emitError(
-               "The operand type is not equal to the signal type. Expected ")
-           << resultType.getUnderlyingType() << " but got "
-           << op.init().getType();
-
-  return success();
-}
-
-// Prb Op
-
-/// Verify the construction invariants of a llhd.prb instruction
-static LogicalResult verify(llhd::PrbOp op) {
-  auto sigType = op.signal().getType().dyn_cast<llhd::SigType>();
-
-  // check the type carried by the signal matches the result type
-  if (sigType.getUnderlyingType() != op.getType())
-    return op.emitError(
-               "The operand type is not equal to the signal type. Expected ")
-           << sigType.getUnderlyingType() << " but got " << op.getType();
-
-  return success();
-}
-
-// Drv Op
-
-/// Verify construction invariants of a llhd.drv operation
-static LogicalResult verify(llhd::DrvOp op) {
-  auto sigType = op.signal().getType().dyn_cast<llhd::SigType>();
-
-  // check the type of the new value matches the type carried by the signal
-  if (sigType.getUnderlyingType() != op.value().getType())
-    return op.emitError("The new value's type is not equal to the signal type. "
-                        "Expected ")
-           << sigType.getUnderlyingType() << " but got "
-           << op.value().getType();
-
-  return success();
-}
-
 //===----------------------------------------------------------------------===//
 // NegOp
 //===----------------------------------------------------------------------===//
