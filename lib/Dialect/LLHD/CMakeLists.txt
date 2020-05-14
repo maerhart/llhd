@@ -6,6 +6,7 @@ add_mlir_dialect_library(MLIRLLHD
   ${PROJECT_SOURCE_DIR}/include/Dialect/LLHD
 
   DEPENDS
+  MLIRLLHDEnumsIncGen
   MLIRLLHDOpsIncGen
 
   LINK_LIBS PUBLIC

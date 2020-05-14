@@ -1,13 +1,18 @@
 #include "Dialect/LLHD/LLHDOps.h"
+#include "Dialect/LLHD/LLHDDialect.h"
 #include "mlir/Dialect/CommonFolders.h"
+#include "mlir/IR/Attributes.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/Module.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/Region.h"
+#include "mlir/IR/StandardTypes.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
+#include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
 
 using namespace mlir;
@@ -611,6 +616,187 @@ FunctionType llhd::InstOp::getCalleeType() {
   return FunctionType::get(argTypes, ArrayRef<Type>(), getContext());
 }
 
+static ParseResult parseRegOp(OpAsmParser &parser, OperationState &result) {
+  OpAsmParser::OperandType init;
+  Type initType;
+  SmallVector<OpAsmParser::OperandType, 8> valueOperands;
+  SmallVector<OpAsmParser::OperandType, 8> triggerOperands;
+  SmallVector<OpAsmParser::OperandType, 8> gateOperands;
+  SmallVector<Type, 8> valueTypes;
+  SmallVector<Type, 8> triggerTypes;
+  SmallVector<Type, 8> gateTypes;
+  llvm::SmallVector<int64_t, 8> modesArray;
+  llvm::SmallVector<int64_t, 8> gateMask;
+  int64_t gateCount = 0;
+
+  if (parser.parseOperand(init))
+    return failure();
+  while (succeeded(parser.parseOptionalComma())) {
+    OpAsmParser::OperandType value;
+    OpAsmParser::OperandType trigger;
+    OpAsmParser::OperandType gate;
+    Type valueType;
+    Type triggerType;
+    Type gateType;
+    StringAttr modeAttr;
+    NamedAttrList attrStorage;
+    bool hasGate = false;
+
+    if (parser.parseLParen())
+      return failure();
+    if (parser.parseOperand(value) || parser.parseComma())
+      return failure();
+    if (parser.parseAttribute(modeAttr, parser.getBuilder().getNoneType(),
+                              "modes", attrStorage))
+      return failure();
+    auto attrOptional = llhd::symbolizeRegMode(modeAttr.getValue());
+    if (!attrOptional)
+      return parser.emitError(parser.getCurrentLocation(),
+                              "invalid string attribute");
+    modesArray.push_back(static_cast<int64_t>(attrOptional.getValue()));
+    if (parser.parseOperand(trigger))
+      return failure();
+    if (succeeded(parser.parseOptionalKeyword("if"))) {
+      hasGate = true;
+      gateMask.push_back(++gateCount);
+      if (parser.parseOperand(gate))
+        return failure();
+    } else {
+      gateMask.push_back(0);
+    }
+    if (parser.parseColon() || parser.parseType(valueType) ||
+        parser.parseComma() || parser.parseType(triggerType))
+      return failure();
+    if (succeeded(parser.parseOptionalComma())) {
+      if (!hasGate)
+        return parser.emitError(
+            parser.getCurrentLocation(),
+            "Got optional gate type, but none was expected!");
+      if (parser.parseType(gateType))
+        return failure();
+    } else {
+      if (hasGate)
+        return parser.emitError(parser.getCurrentLocation(),
+                                "Optional gate type expected!");
+    }
+    valueOperands.push_back(value);
+    triggerOperands.push_back(trigger);
+    valueTypes.push_back(valueType);
+    triggerTypes.push_back(triggerType);
+    if (hasGate) {
+      gateOperands.push_back(gate);
+      gateTypes.push_back(gateType);
+    }
+    if (parser.parseRParen())
+      return failure();
+  }
+  if (parser.parseColon() || parser.parseType(initType))
+    return failure();
+  if (parser.resolveOperand(init, initType, result.operands))
+    return failure();
+  if (parser.resolveOperands(valueOperands, valueTypes,
+                             parser.getCurrentLocation(), result.operands))
+    return failure();
+  if (parser.resolveOperands(triggerOperands, triggerTypes,
+                             parser.getCurrentLocation(), result.operands))
+    return failure();
+  if (parser.resolveOperands(gateOperands, gateTypes,
+                             parser.getCurrentLocation(), result.operands))
+    return failure();
+  result.addAttribute("gateMask",
+                      parser.getBuilder().getI64ArrayAttr(gateMask));
+  result.addAttribute("modes", parser.getBuilder().getI64ArrayAttr(modesArray));
+  llvm::SmallVector<int32_t, 3> operandSizes;
+  operandSizes.push_back(1);
+  operandSizes.push_back(valueOperands.size());
+  operandSizes.push_back(triggerOperands.size());
+  operandSizes.push_back(gateOperands.size());
+  result.addAttribute("operand_segment_sizes",
+                      parser.getBuilder().getI32VectorAttr(operandSizes));
+  result.addTypes(llhd::SigType::get(initType));
+}
+
+static void print(OpAsmPrinter &printer, llhd::RegOp op) {
+  printer << op.getOperationName() << " " << op.init();
+  for (unsigned i = 0; i < op.values().size(); ++i) {
+    Optional<llhd::RegMode> mode = llhd::symbolizeRegMode(
+        op.modes().getValue()[i].cast<IntegerAttr>().getInt());
+    if (!mode)
+      op.emitError("invalid RegMode");
+    printer << ", (" << op.values()[i] << ", \""
+            << llhd::stringifyRegMode(mode.getValue()) << "\" "
+            << op.triggers()[i];
+    if (op.hasGate(i))
+      printer << " if " << op.getGateAt(i);
+    printer << " : " << op.values()[i].getType() << ", "
+            << op.triggers()[i].getType();
+    if (op.hasGate(i))
+      printer << ", " << op.getGateAt(i).getType();
+    printer << ")";
+  }
+  printer << " : " << op.init().getType();
+}
+
+static LogicalResult verify(llhd::RegOp op) {
+  // Values variadic operand must have the same size as the triggers variadic
+  if (op.values().size() != op.triggers().size())
+    return op.emitOpError("Number of 'values' is not equal to the number of "
+                          "'triggers', got ")
+           << op.values().size() << " modes, but " << op.triggers().size()
+           << " triggers!";
+
+  // Array Attribute of RegModes must have the same number of elements as the
+  // variadics
+  if (op.modes().size() != op.triggers().size())
+    return op.emitOpError("Number of 'modes' is not equal to the number of "
+                          "'triggers', got ")
+           << op.modes().size() << " modes, but " << op.triggers().size()
+           << " triggers!";
+
+  // Array Attribute 'gateMask' must have the same number of elements as the
+  // triggers and values variadics
+  if (op.gateMask().size() != op.triggers().size())
+    return op.emitOpError("Size of 'gateMask' is not equal to the size of "
+                          "'triggers', got ")
+           << op.gateMask().size() << " modes, but " << op.triggers().size()
+           << " triggers!";
+
+  // Number of non-zero elements in 'gateMask' has to be the same as the size of
+  // the gates variadic, also each number from 1 to size-1 has to occur only
+  // once and in increasing order
+  unsigned counter = 0;
+  unsigned prevElement = 0;
+  for (Attribute maskElem : op.gateMask().getValue()) {
+    int64_t val = maskElem.cast<IntegerAttr>().getInt();
+    if (val < 0)
+      return op.emitError("Element in 'gateMask' must not be negative!");
+    if (val == 0)
+      continue;
+    if (val != ++prevElement)
+      return op.emitError(
+          "'gateMask' has to contain every number from 1 to the "
+          "number of gates minus one exactly once in increasing order "
+          "(may have zeros in-between).");
+    counter++;
+  }
+  if (op.gates().size() != counter)
+    return op.emitError("The number of non-zero elements in 'gateMask' and the "
+                        "size of the 'gates' variadic have to match.");
+
+  // Each value must be either the same type as the init or a signal type with
+  // the same type as the init as underlying type.
+  for (auto val : op.values()) {
+    if (val.getType() != op.init().getType() &&
+        val.getType() != llhd::SigType::get(op.init().getType())) {
+      op.emitOpError("type of each 'value' has to be either the same as the "
+                     "type of 'init' of a signal with the type of 'init' as "
+                     "it's underlying type!");
+      return failure();
+    }
+  }
+}
+
+#include "Dialect/LLHD/LLHDOpsEnums.cpp.inc"
 namespace mlir {
 namespace llhd {
 #define GET_OP_CLASSES

@@ -710,5 +710,107 @@ def LLHD_InstOp : LLHD_Op<"inst", [CallOpInterface, HasParent<"EntityOp">,
     let verifier = [{ return ::verify(*this); }];
 }
 
+def REG_MODE_LOW  : I64EnumAttrCase<"low", 0>;
+def REG_MODE_HIGH : I64EnumAttrCase<"high", 1>;
+def REG_MODE_RISE : I64EnumAttrCase<"rise", 2>;
+def REG_MODE_FALL : I64EnumAttrCase<"fall", 3>;
+def REG_MODE_BOTH : I64EnumAttrCase<"both", 4>;
+
+def LLHD_RegModeAttr : I64EnumAttr<"RegMode", "",
+        [REG_MODE_LOW, REG_MODE_HIGH, REG_MODE_RISE, REG_MODE_FALL,
+         REG_MODE_BOTH]> {
+    let cppNamespace = "::mlir::llhd";
+}
+
+def LLHD_RegModeArrayAttr : TypedArrayAttrBase<LLHD_RegModeAttr,
+                                               "reg mode array attribute"> {}
+
+def LLHD_RegOp : LLHD_Op<"reg", [HasParent<"EntityOp">, AttrSizedOperandSegments,
+        TypesMatchWith<"type of 'init' and underlying type of 'result' have to match.",
+                       "init", "result",
+                       "SigType::get($_self)">]> {
+    let summary = "Represents a storage element";
+    let description = [{
+        This instruction represents a storage element. At the beginning it is
+        initialized with the `init` value. An arbitrary amount of triggers can
+        be added to the storage element. They are triples consisting of the new
+        value to be stored if the trigger applies, and the mode and trigger
+        value which specify when this trigger has to be applied. If multiple
+        triggers apply the left-most in the list takes precedence. Optionally,
+        each triple may also have a gate condition, in this case the trigger
+        only applies if the gate is one.
+
+        There are five modes available:
+
+        | Mode   | Meaning                                                     |
+        |--------|-------------------------------------------------------------|
+        | "low"  | Storage element stores `value` while the `trigger` is low. Models active-low resets and low-transparent latches. |
+        | "high" | Storage element stores `value` while the `trigger` is high. Models active-high resets and high-transparent latches. |
+        | "rise" | Storage element stores `value` upon the rising edge of the `trigger`. Models rising-edge flip-flops.
+        | "fall" | Storage element stores `value` upon the falling edge of the `trigger`. Models falling-edge flip-flops.
+        | "both" | Storage element stores `value` upon the a rising or a falling edge of the `trigger`. Models dual-edge flip-flops.
+
+        This instruction may only be used in an LLHD entity.
+
+        Syntax:
+
+        ```
+        reg-op ::= `llhd.reg` init-ssa-value ( `,` `(` value-ssa-value `,` mode-string trigger-ssa-value ( `if` gate-ssa-value )? `:` value-type `,` trigger-type ( `,` gate-type )? `)` )* attr-dict `:` init-type
+        ```
+
+        Examples:
+
+        ```
+        llhd.entity @check_reg (%arg0 : !llhd.sig<i1>, %arg1 : !llhd.sig<i64>) -> () {
+            %0 = llhd.const 0 : i1
+            %1 = llhd.const 0 : i64
+            %2 = llhd.reg %1 : i64
+            %3 = llhd.reg %1, (%1, "both" %0 if %0 : i64, i1, i1) : i64
+            %4 = llhd.reg %1, (%1, "low" %0 if %arg0 : i64, i1, !llhd.sig<i1>), (%arg1, "high" %arg0 if %0 : !llhd.sig<i64>, !llhd.sig<i1>, i1) : i64
+            %5 = llhd.reg %1, (%1, "rise" %0 : i64, i1), (%arg1, "fall" %arg0 if %arg0 : !llhd.sig<i64>, !llhd.sig<i1>, !llhd.sig<i1>) : i64
+        }
+        ```
+    }];
+
+    let arguments = (ins AnySignlessInteger:$init,
+                         LLHD_RegModeArrayAttr:$modes,
+                         Variadic<AnyTypeOf<[
+                             AnySignlessInteger, LLHD_AnySigType]>>:$values,
+                         Variadic<AnyTypeOf<[
+                             I1, LLHD_SigType<[I1]>]>>:$triggers,
+                         Variadic<AnyTypeOf<[
+                             NoneType, I1, LLHD_SigType<[I1]>]>>:$gates,
+                         I64ArrayAttr:$gateMask);
+
+    let results = (outs LLHD_AnySigType:$result);
+
+    let extraClassDeclaration = [{
+        static StringRef getModeAttrName() { return "modes"; }
+        static RegMode getRegModeByName(StringRef name) {
+            llvm::Optional<RegMode> optional =  symbolizeRegMode(name);
+            assert(optional && "Invalid RegMode string.");
+            return optional.getValue();
+        }
+
+        bool hasGate(unsigned index) {
+            assert(index < gateMask().getValue().size() && "Index out of range.");
+            return gateMask().getValue()[index].cast<IntegerAttr>().getInt() != 0;
+        }
+
+        Value getGateAt(unsigned index) {
+            assert(index < gateMask().getValue().size() && "Index out of range.");
+            if (!hasGate(index)) return Value();
+            return gates()[gateMask().getValue()[index].cast<IntegerAttr>().getInt()-1];
+        }
+
+        RegMode getRegModeAt(unsigned index) {
+            assert(index < modes().getValue().size() && "Index out of range.");
+            return (RegMode)modes().getValue()[index].cast<IntegerAttr>().getInt();
+        }
+    }];
+
+    let verifier = [{ return ::verify(*this); }];
+}
+
 
 #endif // LLHD_OPS

@@ -2,6 +2,7 @@
 #define MLIR_DIALECT_LLHD_LLHDOPS_H
 
 #include "Dialect/LLHD/LLHDDialect.h"
+#include "Dialect/LLHD/LLHDOpsEnums.h.inc"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/StandardTypes.h"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
