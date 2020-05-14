@@ -14,13 +14,14 @@ class Engine {
 public:
   /// Initialize an LLHD simulation engine. This initializes the state, as well
   /// as the mlir::ExecutionEngine with the given module.
-  Engine(llvm::raw_ostream &out, ModuleOp module);
+  Engine(llvm::raw_ostream &out, ModuleOp module, std::string root);
 
   /// Run simulation up to n steps. Pass n=0 to run indefinitely.
   int simulate(int n);
 
 private:
   llvm::raw_ostream &out;
+  std::string root;
   std::unique_ptr<State> state;
   std::unique_ptr<ExecutionEngine> engine;
   ModuleOp module;

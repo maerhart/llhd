@@ -10,8 +10,8 @@
 using namespace mlir;
 using namespace llhd::sim;
 
-Engine::Engine(llvm::raw_ostream &out, ModuleOp module)
-    : module(module), out(out) {
+Engine::Engine(llvm::raw_ostream &out, ModuleOp module, std::string root)
+    : module(module), out(out), root(root) {
   state = std::make_unique<State>();
   // add 0-time event
   state->queue.push(Slot(Time()));
@@ -54,7 +54,7 @@ int Engine::simulate(int n) {
     }
 
     // run entity
-    auto invocationResult = engine->invoke("Foo", state);
+    auto invocationResult = engine->invoke(root, state);
     if (invocationResult) {
       llvm::errs() << "Failed invocation of Foo: " << invocationResult;
       return -1;

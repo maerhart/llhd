@@ -1,4 +1,4 @@
-// RUN: llhd-sim %s -n 10 | FileCheck %s
+// RUN: llhd-sim %s -n 10 -r Foo | FileCheck %s
 
 // CHECK: 0ns 0d 0e  Foo/toggle  0
 // CHECK-NEXT: 1ns 0d 0e  Foo/toggle  1

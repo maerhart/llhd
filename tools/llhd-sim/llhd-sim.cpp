@@ -37,6 +37,12 @@ static cl::opt<bool> dumpLLVM("dump-llvm-ir",
 static cl::opt<bool> dumpMLIR("dump-mlir",
                               cl::desc("Dump the original MLIR module"));
 
+static cl::opt<std::string> root(
+    "root",
+    cl::desc("Specify the name of the entity to use as root of the design"),
+    cl::value_desc("root_name"), cl::init("root"));
+static cl::alias rootA("r", cl::desc("Alias for -root"), cl::aliasopt(root));
+
 int parseMLIR(MLIRContext &context, OwningModuleRef &module) {
   module = parseSourceFile(inputFilename, &context);
   if (!module)
@@ -111,7 +117,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  llhd::sim::Engine engine(output->os(), *module);
+  llhd::sim::Engine engine(output->os(), *module, root);
   engine.simulate(nSteps);
 
   output->keep();
