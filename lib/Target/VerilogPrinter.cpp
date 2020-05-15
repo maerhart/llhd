@@ -1,4 +1,5 @@
 #include "Target/VerilogPrinter.h"
+#include "mlir/Support/LogicalResult.h"
 
 using namespace mlir;
 
@@ -282,6 +283,27 @@ mlir::llhd::VerilogPrinter::printOperation(Operation *inst,
   if (auto op = dyn_cast<llhd::SModOp>(inst)) {
     emitError(op.getLoc(), "Signed modulo operation is not yet supported!");
     return failure();
+  }
+  if (auto op = dyn_cast<llhd::InstOp>(inst)) {
+    out.PadToColumn(indentAmount);
+    out << "_" << op.callee() << " " << getNewInstantiationName();
+    if (op.inputs().size() > 0 || op.outputs().size() > 0)
+      out << " (";
+    unsigned counter = 0;
+    for (Value arg : op.inputs()) {
+      if (counter++ > 0)
+        out << ", ";
+      out << getVariableName(arg);
+    }
+    for (Value arg : op.outputs()) {
+      if (counter++ > 0)
+        out << ", ";
+      out << getVariableName(arg);
+    }
+    if (op.inputs().size() > 0 || op.outputs().size() > 0)
+      out << ")";
+    out << ";\n";
+    return success();
   }
   // TODO: insert all comparison operations here
   // TODO: insert structural operations here

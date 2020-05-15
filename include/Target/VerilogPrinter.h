@@ -33,10 +33,15 @@ private:
   /// added.
   Twine getVariableName(Value value);
 
+  Twine getNewInstantiationName() {
+    return Twine("inst_") + Twine(instCount++);
+  }
+
   /// Adds an alias for an existing SSA value. In case doesn't exist, it just
   /// adds the alias as a new value.
   void addAliasVariable(Value alias, Value existing);
 
+  unsigned instCount = 0;
   formatted_raw_ostream &out;
   unsigned nextValueNum = 0;
   DenseMap<Value, unsigned> mapValueToName;
