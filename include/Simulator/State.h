@@ -47,14 +47,25 @@ private:
 /// The simulator's internal representation of a signal.
 struct Signal {
   /// Construct a signal with the given name, owner and initial value.
-  Signal(std::string name, std::string owner, int init);
+  Signal(std::string name, std::string owner, uint8_t *value, uint64_t size);
+
+  /// Default signal destructor
+  ~Signal() = default;
+
+  /// Returns true if the signals match in name, owner, size and value
+  bool operator==(const Signal &rhs) const;
+
+  /// Returns true if the owner is lexically smaller than rhs, or the
+  /// name is lexically smaller than rhs, in case they share the same owner
+  bool operator<(const Signal &rhs) const;
 
   /// Return the signal value in dumpable format: "owner/name  value"
   std::string dump();
 
   std::string name;
   std::string owner;
-  std::unique_ptr<int> value;
+  uint64_t size;
+  uint8_t *value;
 };
 
 /// The simulator's internal representation of one queue slot.
@@ -69,10 +80,10 @@ struct Slot {
   bool operator>(const Slot &rhs) const;
 
   /// Insert a change.
-  void insertChange(int index, int value);
+  void insertChange(int index, std::vector<uint8_t> &bytes);
 
   // <signal-index, new-value>
-  std::map<int, int> changes;
+  std::map<int, std::vector<uint8_t>> changes;
   Time time;
 };
 
@@ -83,7 +94,7 @@ class UpdateQueue
 public:
   /// Check wheter a slot for the given time already exists. If that's the case,
   /// add the new change to it, else create a new slot and push it to the queue.
-  void insertOrUpdate(Time time, int index, int value);
+  void insertOrUpdate(Time time, int index, std::vector<uint8_t> &bytes);
 };
 
 /// The simulator's state. It contains the current simulation time, signal
@@ -97,16 +108,17 @@ struct State {
 
   /// Push a new event in the event queue and return the index of the new event
   /// in the queue.
-  void pushQueue(Time time, int index, int value);
+  void pushQueue(Time time, int index, std::vector<uint8_t> &bytes);
 
   /// Get the signal at position i in the signal list.
   Signal getSignal(int index);
 
   /// Add a new signal to the state. Returns the index of the new signal.
-  int addSignal(std::string name, std::string owner, int init);
+  int addSignal(std::string name, std::string owner, uint8_t *value,
+                uint64_t size);
 
   /// Update the signal at position i in the signals list to the given value.
-  void updateSignal(int index, int value);
+  void updateSignal(int index, std::vector<uint8_t> &bytes);
 
   /// Dump a signal to llvm::errs().
   void dumpSignal(llvm::raw_ostream &out, int index);

@@ -7,6 +7,8 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
+
 using namespace mlir;
 using namespace llhd::sim;
 
@@ -27,6 +29,17 @@ Engine::Engine(llvm::raw_ostream &out, ModuleOp module, std::string root)
 int Engine::simulate(int n) {
   assert(engine && "engine not found");
   assert(state && "state not found");
+
+  // initialize simulation state
+  auto invocationResult = engine->invoke("llhd_init", state);
+  if (invocationResult) {
+    llvm::errs() << "Failed invocation of llhd_init: " << invocationResult;
+    return -1;
+  }
+
+  // sort the signals by owner, then by name
+  std::sort(state->signals.begin(), state->signals.end());
+
   int i = 0;
   while (!state->queue.empty()) {
     if (n > 0 && i >= n) {
@@ -42,8 +55,15 @@ int Engine::simulate(int n) {
     // dump changes, only if actually changed
     unsigned actual = 0;
     for (auto change : pop.changes) {
-      if (*state->signals[change.first].value == change.second)
+      assert(state->signals[change.first].size == change.second.size() &&
+             "size mismatch");
+      bool equal = true;
+      for (int i = 0; i < change.second.size(); i++) {
+        equal &= (state->signals[change.first].value[i] == change.second[i]);
+      }
+      if (equal)
         continue;
+
       state->updateSignal(change.first, change.second);
       state->dumpSignal(out, change.first);
       actual++;
@@ -56,7 +76,8 @@ int Engine::simulate(int n) {
     // run entity
     auto invocationResult = engine->invoke(root, state);
     if (invocationResult) {
-      llvm::errs() << "Failed invocation of Foo: " << invocationResult;
+      llvm::errs() << "Failed invocation of " << root << ": "
+                   << invocationResult;
       return -1;
     }
 

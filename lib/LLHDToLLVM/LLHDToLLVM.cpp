@@ -23,18 +23,41 @@ namespace {
 //===----------------------------------------------------------------------===//
 
 /// Get an existing global string
-Value getGlobalString(Location loc, ConversionPatternRewriter &rewriter,
+Value getGlobalString(Location loc, OpBuilder &builder,
                       LLVMTypeConverter &typeConverter, LLVM::GlobalOp &str) {
   auto i8PtrTy = LLVM::LLVMType::getInt8PtrTy(typeConverter.getDialect());
   auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
 
-  auto addr = rewriter.create<LLVM::AddressOfOp>(
+  auto addr = builder.create<LLVM::AddressOfOp>(
       loc, str.getType().getPointerTo(), str.getName());
-  auto idx = rewriter.create<LLVM::ConstantOp>(loc, i32Ty,
-                                               rewriter.getI32IntegerAttr(0));
+  auto idx = builder.create<LLVM::ConstantOp>(loc, i32Ty,
+                                              builder.getI32IntegerAttr(0));
   llvm::SmallVector<Value, 2> idxs({idx, idx});
-  auto gep = rewriter.create<LLVM::GEPOp>(loc, i8PtrTy, addr, idxs);
+  auto gep = builder.create<LLVM::GEPOp>(loc, i8PtrTy, addr, idxs);
   return gep;
+}
+
+/// Looks up a symbol and inserts a new functino at the beginning of the
+/// module's region in case the function does not exists. If
+/// insertBodyAndTerminator is set, also adds the entry block and return
+/// terminator
+LLVM::LLVMFuncOp getOrInsertFunction(ModuleOp &module,
+                                     ConversionPatternRewriter &rewriter,
+                                     std::string name, LLVM::LLVMType signature,
+                                     bool insertBodyAndTerminator = false) {
+  auto func = module.lookupSymbol<LLVM::LLVMFuncOp>(name);
+  if (!func) {
+    OpBuilder moduleBuilder(module.getBodyRegion());
+    func = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
+                                                  name, signature);
+    if (insertBodyAndTerminator) {
+      func.addEntryBlock();
+      OpBuilder b(func.getBody());
+      auto ret =
+          b.create<LLVM::ReturnOp>(rewriter.getUnknownLoc(), ValueRange());
+    }
+  }
+  return func;
 }
 
 //===----------------------------------------------------------------------===//
@@ -129,8 +152,40 @@ struct SigOpConversion : public ConvertToLLVMPattern {
     auto i8PtrTy = getVoidPtrType();
     auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
+    auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
 
-    // get or create owner name string
+    //! get or insert malloc function definition
+    // malloc function signature: (i64 %size) -> i8* %pointer
+    auto mallocSigFuncTy =
+        LLVM::LLVMType::getFunctionTy(i8PtrTy, {i64Ty}, false);
+    auto mallFunc =
+        getOrInsertFunction(module, rewriter, "malloc", mallocSigFuncTy);
+
+    //! get or insert library call definition
+    // alloc_signal function signature: (i8* %state, i8* %sig_name, i8*
+    // %sig_owner, i32 %value) -> i32 %sig_index
+    auto allocSigFuncTy = LLVM::LLVMType::getFunctionTy(
+        i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy, i8PtrTy, i64Ty}, false);
+    auto sigFunc =
+        getOrInsertFunction(module, rewriter, libCall, allocSigFuncTy);
+
+    //! get or insert signal gathering library call definition
+    // gather_signal function signature: (i8* %state, i8* %sig_name, i8*
+    // %sig_owner) -> i32 %sig_index
+    auto gatherSigFuncTy = LLVM::LLVMType::getFunctionTy(
+        i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy}, false);
+    auto gatherFunc =
+        getOrInsertFunction(module, rewriter, gatherCall, gatherSigFuncTy);
+
+    //! get or insert init function
+    // llhd_init function signature: (i8* %state, i8* %sig_name, i8*
+    // %sig_owner, i32 %value) -> i32 %sig_index
+    auto initFuncTy = LLVM::LLVMType::getFunctionTy(voidTy, {i8PtrTy}, false);
+    auto initFunc =
+        getOrInsertFunction(module, rewriter, initCall, initFuncTy, true);
+    OpBuilder initBuilder(initFunc.getRegion());
+
+    //! get or create owner name string
     Value owner;
     llvm::StringRef parent = op->getParentOfType<LLVM::LLVMFuncOp>().getName();
     auto parentSym =
@@ -139,11 +194,14 @@ struct SigOpConversion : public ConvertToLLVMPattern {
       owner = LLVM::createGlobalString(
           op->getLoc(), rewriter, "entity." + parent.str(), parent.str() + '\0',
           LLVM::Linkage::Internal, typeConverter.getDialect());
+      parentSym = module.lookupSymbol<LLVM::GlobalOp>("entity." + parent.str());
     } else {
       owner = getGlobalString(op->getLoc(), rewriter, typeConverter, parentSym);
     }
+    Value ownerInit = getGlobalString(rewriter.getUnknownLoc(), initBuilder,
+                                      typeConverter, parentSym);
 
-    // get or create signal name
+    //! get or create signal name
     Value sigName;
     auto sigSym =
         module.lookupSymbol<LLVM::GlobalOp>("sig." + sigOp.name().str());
@@ -152,38 +210,60 @@ struct SigOpConversion : public ConvertToLLVMPattern {
           op->getLoc(), rewriter, "sig." + sigOp.name().str(),
           sigOp.name().str() + '\0', LLVM::Linkage::Internal,
           typeConverter.getDialect());
+      sigSym = module.lookupSymbol<LLVM::GlobalOp>("sig." + sigOp.name().str());
     } else {
       sigName = getGlobalString(op->getLoc(), rewriter, typeConverter, sigSym);
     }
+    Value sigNameInit = getGlobalString(rewriter.getUnknownLoc(), initBuilder,
+                                        typeConverter, sigSym);
 
-    // get or insert library call definition
-    auto sigFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
-    if (!sigFunc) {
-      OpBuilder moduleBuilder(module.getBodyRegion());
-      // alloc_signal function signature: (i8* %state, i8* %sig_name, i8*
-      // %sig_owner, i32 %value) -> i32 %sig_index
-      auto allocSigFuncTy = LLVM::LLVMType::getFunctionTy(
-          i32Ty, {i8PtrTy, i8PtrTy, i8PtrTy, i32Ty}, false);
-      sigFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
-                                                       libCall, allocSigFuncTy);
-    }
+    //! add signal allocation to the init function
+    // clone and insert init's defining operation (assmued to be a constant op)
+    auto initDef =
+        initBuilder.insert(transformed.init().getDefiningOp()->clone())
+            ->getResult(0);
+    // malloc required space
+    int size = std::ceil(sigOp.init().getType().getIntOrFloatBitWidth() / 8.0);
+    auto sizeConst = initBuilder.create<LLVM::ConstantOp>(
+        rewriter.getUnknownLoc(), i64Ty, rewriter.getI64IntegerAttr(size));
+    llvm::SmallVector<Value, 1> margs({sizeConst});
+    auto mall =
+        initBuilder
+            .create<LLVM::CallOp>(rewriter.getUnknownLoc(), i8PtrTy,
+                                  rewriter.getSymbolRefAttr(mallFunc), margs)
+            .getResult(0);
+    auto bitcast = initBuilder
+                       .create<LLVM::BitcastOp>(rewriter.getUnknownLoc(),
+                                                transformed.init()
+                                                    .getType()
+                                                    .cast<LLVM::LLVMType>()
+                                                    .getPointerTo(),
+                                                mall)
+                       .getResult();
+    auto initStore = initBuilder.create<LLVM::StoreOp>(rewriter.getUnknownLoc(),
+                                                       initDef, bitcast);
+    Value initStatePtr = initFunc.getArgument(0);
+    llvm::SmallVector<Value, 5> args(
+        {initStatePtr, sigNameInit, ownerInit, mall, sizeConst});
+    initBuilder.create<LLVM::CallOp>(rewriter.getUnknownLoc(), i32Ty,
+                                     rewriter.getSymbolRefAttr(sigFunc), args);
 
-    // extend value to i32
-    auto zext =
-        rewriter.create<LLVM::ZExtOp>(op->getLoc(), i32Ty, transformed.init());
-    // get state
+    //! replace op with gather_signal call
+    // get state ptr
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // build call arguments vector
-    llvm::SmallVector<Value, 4> args({statePtr, sigName, owner, zext});
+    llvm::SmallVector<Value, 3> gatherArgs({statePtr, sigName, owner});
     // replace original operation with the library call
     rewriter.replaceOpWithNewOp<LLVM::CallOp>(
-        op, i32Ty, rewriter.getSymbolRefAttr(sigFunc), args);
+        op, i32Ty, rewriter.getSymbolRefAttr(gatherFunc), gatherArgs);
 
     return success();
   }
 
 private:
   const std::string libCall = "alloc_signal";
+  const std::string gatherCall = "gather_signal";
+  const std::string initCall = "llhd_init";
 };
 
 /// Convert an `llhd.prb` operation to LLVM. The result is a library call to the
@@ -278,6 +358,7 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     auto i8PtrTy = getVoidPtrType();
     auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
+    auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
 
     // get or insert drive library call
     auto drvFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
@@ -286,11 +367,27 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
       // drv function signature: (i8* %state, i32 %sig_index, i32 %new_value,
       // i32 %time, i32 %delta, i32 %eps) -> ()
       auto drvFuncTy = LLVM::LLVMType::getFunctionTy(
-          voidTy, {i8PtrTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty},
+          voidTy, {i8PtrTy, i32Ty, i8PtrTy, i64Ty, i32Ty, i32Ty, i32Ty},
           /*isVarArg=*/false);
       drvFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
                                                        libCall, drvFuncTy);
     }
+
+    //! get new value pointer
+    auto oneConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(1));
+    auto alloca = rewriter.create<LLVM::AllocaOp>(
+        op->getLoc(),
+        transformed.value().getType().cast<LLVM::LLVMType>().getPointerTo(),
+        oneConst, 4);
+    rewriter.create<LLVM::StoreOp>(op->getLoc(), transformed.value(), alloca);
+    auto bc = rewriter.create<LLVM::BitcastOp>(op->getLoc(), i8PtrTy, alloca);
+
+    //! get value size
+    // get value size in bytes, rounded to the next byte
+    int size = std::ceil(drvOp.value().getType().getIntOrFloatBitWidth() / 8.0);
+    auto sizeConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(size));
 
     // get constant time operation
     auto timeAttr = cast<llhd::ConstOp>(drvOp.time().getDefiningOp())
@@ -315,14 +412,12 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
         op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
         epsAttr);
 
-    // extend value to i32
-    auto zext =
-        rewriter.create<LLVM::ZExtOp>(op->getLoc(), i32Ty, transformed.value());
     // get state pointer from function arguments
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // define library call arguments
-    llvm::SmallVector<Value, 6> args({statePtr, transformed.signal(), zext,
-                                      realTimeConst, deltaConst, epsConst});
+    llvm::SmallVector<Value, 7> args({statePtr, transformed.signal(), bc,
+                                      sizeConst, realTimeConst, deltaConst,
+                                      epsConst});
     // create library call
     rewriter.create<LLVM::CallOp>(op->getLoc(), voidTy,
                                   rewriter.getSymbolRefAttr(drvFunc), args);
