@@ -32,7 +32,9 @@ class LLHD_SigType<list<Type> allowedTypes>
     : ContainerType<AnyTypeOf<allowedTypes>, CPred<"$_self.isa<SigType>()">,
         "$_self.cast<SigType>().getUnderlyingType()", "LLHD sig type">;
 
-def LLHD_AnySigType : LLHD_SigType<[AnySignlessInteger, LLHD_TimeType]>;
+def LLHD_AnySigUnderlyingType : AnyTypeOf<[AnySignlessInteger, LLHD_TimeType]>;
+
+def LLHD_AnySigType : LLHD_SigType<[LLHD_AnySigUnderlyingType]>;
 
 //===----------------------------------------------------------------------===//
 // LLDH attribute definitions

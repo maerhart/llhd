@@ -617,30 +617,27 @@ FunctionType llhd::InstOp::getCalleeType() {
 }
 
 static ParseResult parseRegOp(OpAsmParser &parser, OperationState &result) {
-  OpAsmParser::OperandType init;
-  Type initType;
+  OpAsmParser::OperandType signal;
+  Type signalType;
   SmallVector<OpAsmParser::OperandType, 8> valueOperands;
   SmallVector<OpAsmParser::OperandType, 8> triggerOperands;
+  SmallVector<OpAsmParser::OperandType, 8> delayOperands;
   SmallVector<OpAsmParser::OperandType, 8> gateOperands;
   SmallVector<Type, 8> valueTypes;
-  SmallVector<Type, 8> triggerTypes;
-  SmallVector<Type, 8> gateTypes;
   llvm::SmallVector<int64_t, 8> modesArray;
   llvm::SmallVector<int64_t, 8> gateMask;
   int64_t gateCount = 0;
 
-  if (parser.parseOperand(init))
+  if (parser.parseOperand(signal))
     return failure();
   while (succeeded(parser.parseOptionalComma())) {
     OpAsmParser::OperandType value;
     OpAsmParser::OperandType trigger;
+    OpAsmParser::OperandType delay;
     OpAsmParser::OperandType gate;
     Type valueType;
-    Type triggerType;
-    Type gateType;
     StringAttr modeAttr;
     NamedAttrList attrStorage;
-    bool hasGate = false;
 
     if (parser.parseLParen())
       return failure();
@@ -656,68 +653,60 @@ static ParseResult parseRegOp(OpAsmParser &parser, OperationState &result) {
     modesArray.push_back(static_cast<int64_t>(attrOptional.getValue()));
     if (parser.parseOperand(trigger))
       return failure();
+    if (parser.parseKeyword("after") || parser.parseOperand(delay))
+      return failure();
     if (succeeded(parser.parseOptionalKeyword("if"))) {
-      hasGate = true;
       gateMask.push_back(++gateCount);
       if (parser.parseOperand(gate))
         return failure();
+      gateOperands.push_back(gate);
     } else {
       gateMask.push_back(0);
     }
     if (parser.parseColon() || parser.parseType(valueType) ||
-        parser.parseComma() || parser.parseType(triggerType))
+        parser.parseRParen())
       return failure();
-    if (succeeded(parser.parseOptionalComma())) {
-      if (!hasGate)
-        return parser.emitError(
-            parser.getCurrentLocation(),
-            "Got optional gate type, but none was expected!");
-      if (parser.parseType(gateType))
-        return failure();
-    } else {
-      if (hasGate)
-        return parser.emitError(parser.getCurrentLocation(),
-                                "Optional gate type expected!");
-    }
     valueOperands.push_back(value);
     triggerOperands.push_back(trigger);
+    delayOperands.push_back(delay);
     valueTypes.push_back(valueType);
-    triggerTypes.push_back(triggerType);
-    if (hasGate) {
-      gateOperands.push_back(gate);
-      gateTypes.push_back(gateType);
-    }
-    if (parser.parseRParen())
-      return failure();
   }
-  if (parser.parseColon() || parser.parseType(initType))
+  if (parser.parseOptionalAttrDict(result.attributes) || parser.parseColon() ||
+      parser.parseType(signalType))
     return failure();
-  if (parser.resolveOperand(init, initType, result.operands))
+  if (parser.resolveOperand(signal, signalType, result.operands))
     return failure();
   if (parser.resolveOperands(valueOperands, valueTypes,
                              parser.getCurrentLocation(), result.operands))
     return failure();
-  if (parser.resolveOperands(triggerOperands, triggerTypes,
-                             parser.getCurrentLocation(), result.operands))
-    return failure();
-  if (parser.resolveOperands(gateOperands, gateTypes,
-                             parser.getCurrentLocation(), result.operands))
-    return failure();
+  for (auto operand : triggerOperands)
+    if (parser.resolveOperand(operand, parser.getBuilder().getI1Type(),
+                              result.operands))
+      return failure();
+  for (auto operand : delayOperands)
+    if (parser.resolveOperand(
+            operand, llhd::TimeType::get(parser.getBuilder().getContext()),
+            result.operands))
+      return failure();
+  for (auto operand : gateOperands)
+    if (parser.resolveOperand(operand, parser.getBuilder().getI1Type(),
+                              result.operands))
+      return failure();
   result.addAttribute("gateMask",
                       parser.getBuilder().getI64ArrayAttr(gateMask));
   result.addAttribute("modes", parser.getBuilder().getI64ArrayAttr(modesArray));
-  llvm::SmallVector<int32_t, 3> operandSizes;
+  llvm::SmallVector<int32_t, 5> operandSizes;
   operandSizes.push_back(1);
   operandSizes.push_back(valueOperands.size());
   operandSizes.push_back(triggerOperands.size());
+  operandSizes.push_back(delayOperands.size());
   operandSizes.push_back(gateOperands.size());
   result.addAttribute("operand_segment_sizes",
                       parser.getBuilder().getI32VectorAttr(operandSizes));
-  result.addTypes(llhd::SigType::get(initType));
 }
 
 static void print(OpAsmPrinter &printer, llhd::RegOp op) {
-  printer << op.getOperationName() << " " << op.init();
+  printer << op.getOperationName() << " " << op.signal();
   for (unsigned i = 0; i < op.values().size(); ++i) {
     Optional<llhd::RegMode> mode = llhd::symbolizeRegMode(
         op.modes().getValue()[i].cast<IntegerAttr>().getInt());
@@ -725,24 +714,33 @@ static void print(OpAsmPrinter &printer, llhd::RegOp op) {
       op.emitError("invalid RegMode");
     printer << ", (" << op.values()[i] << ", \""
             << llhd::stringifyRegMode(mode.getValue()) << "\" "
-            << op.triggers()[i];
+            << op.triggers()[i] << " after " << op.delays()[i];
     if (op.hasGate(i))
       printer << " if " << op.getGateAt(i);
-    printer << " : " << op.values()[i].getType() << ", "
-            << op.triggers()[i].getType();
-    if (op.hasGate(i))
-      printer << ", " << op.getGateAt(i).getType();
-    printer << ")";
+    printer << " : " << op.values()[i].getType() << ")";
   }
-  printer << " : " << op.init().getType();
+  printer.printOptionalAttrDict(op.getAttrs(),
+                                {"modes", "gateMask", "operand_segment_sizes"});
+  printer << " : " << op.signal().getType();
 }
 
 static LogicalResult verify(llhd::RegOp op) {
+  // At least one trigger has to be present
+  if (op.triggers().size() < 1)
+    return op.emitError("At least one trigger quadruple has to be present.");
+
   // Values variadic operand must have the same size as the triggers variadic
   if (op.values().size() != op.triggers().size())
     return op.emitOpError("Number of 'values' is not equal to the number of "
                           "'triggers', got ")
            << op.values().size() << " modes, but " << op.triggers().size()
+           << " triggers!";
+
+  // Delay variadic operand must have the same size as the triggers variadic
+  if (op.delays().size() != op.triggers().size())
+    return op.emitOpError("Number of 'delays' is not equal to the number of "
+                          "'triggers', got ")
+           << op.delays().size() << " modes, but " << op.triggers().size()
            << " triggers!";
 
   // Array Attribute of RegModes must have the same number of elements as the
@@ -783,14 +781,14 @@ static LogicalResult verify(llhd::RegOp op) {
     return op.emitError("The number of non-zero elements in 'gateMask' and the "
                         "size of the 'gates' variadic have to match.");
 
-  // Each value must be either the same type as the init or a signal type with
-  // the same type as the init as underlying type.
+  // Each value must be either the same type as the 'signal' or the underlying
+  // type of the 'signal'
   for (auto val : op.values()) {
-    if (val.getType() != op.init().getType() &&
-        val.getType() != llhd::SigType::get(op.init().getType())) {
+    if (val.getType() != op.signal().getType() &&
+        val.getType() !=
+            op.signal().getType().cast<llhd::SigType>().getUnderlyingType()) {
       op.emitOpError("type of each 'value' has to be either the same as the "
-                     "type of 'init' of a signal with the type of 'init' as "
-                     "it's underlying type!");
+                     "type of 'signal' or the underlying type of 'signal'");
       return failure();
     }
   }
