@@ -22,11 +22,11 @@ public:
 
 private:
   LogicalResult printType(Type type);
-  LogicalResult printUnaryOp(Operation *op, char opSymbol,
+  LogicalResult printUnaryOp(Operation *op, StringRef opSymbol,
                              unsigned indentAmount = 0);
-  LogicalResult printBinaryOp(Operation *op, char opSymbol,
+  LogicalResult printBinaryOp(Operation *op, StringRef opSymbol,
                               unsigned indentAmount = 0);
-  LogicalResult printSignedBinaryOp(Operation *op, char opSymbol,
+  LogicalResult printSignedBinaryOp(Operation *op, StringRef opSymbol,
                                     unsigned indentAmount = 0);
 
   /// Prints a SSA value. In case no mapping to a name exists yet, a new one is

@@ -47,7 +47,7 @@ LogicalResult mlir::llhd::VerilogPrinter::printModule(ModuleOp module) {
 }
 
 LogicalResult mlir::llhd::VerilogPrinter::printBinaryOp(Operation *inst,
-                                                        char opSymbol,
+                                                        StringRef opSymbol,
                                                         unsigned indentAmount) {
   // Check that the operation is indeed a binary operation
   if (inst->getNumOperands() != 2) {
@@ -70,9 +70,8 @@ LogicalResult mlir::llhd::VerilogPrinter::printBinaryOp(Operation *inst,
   return success();
 }
 
-LogicalResult
-mlir::llhd::VerilogPrinter::printSignedBinaryOp(Operation *inst, char opSymbol,
-                                                unsigned indentAmount) {
+LogicalResult mlir::llhd::VerilogPrinter::printSignedBinaryOp(
+    Operation *inst, StringRef opSymbol, unsigned indentAmount) {
   // Note: the wire is not declared as signed, because if you have the result
   // of two signed operation as an input to an unsigned operation, it would
   // perform the signed version (sometimes this is not a problem because it's
@@ -105,7 +104,7 @@ mlir::llhd::VerilogPrinter::printSignedBinaryOp(Operation *inst, char opSymbol,
 }
 
 LogicalResult mlir::llhd::VerilogPrinter::printUnaryOp(Operation *inst,
-                                                       char opSymbol,
+                                                       StringRef opSymbol,
                                                        unsigned indentAmount) {
   // Check that the operation is indeed a unary operation
   if (inst->getNumOperands() != 1) {
@@ -187,16 +186,16 @@ mlir::llhd::VerilogPrinter::printOperation(Operation *inst,
     return success();
   }
   if (auto op = dyn_cast<llhd::AndOp>(inst)) {
-    return printBinaryOp(inst, '&', indentAmount);
+    return printBinaryOp(inst, "&", indentAmount);
   }
   if (auto op = dyn_cast<llhd::OrOp>(inst)) {
-    return printBinaryOp(inst, '|', indentAmount);
+    return printBinaryOp(inst, "|", indentAmount);
   }
   if (auto op = dyn_cast<llhd::XorOp>(inst)) {
-    return printBinaryOp(inst, '^', indentAmount);
+    return printBinaryOp(inst, "^", indentAmount);
   }
   if (auto op = dyn_cast<llhd::NotOp>(inst)) {
-    return printUnaryOp(inst, '~', indentAmount);
+    return printUnaryOp(inst, "~", indentAmount);
   }
   if (auto op = dyn_cast<llhd::ShlOp>(inst)) {
     unsigned baseWidth = inst->getOperand(0).getType().getIntOrFloatBitWidth();
@@ -255,33 +254,58 @@ mlir::llhd::VerilogPrinter::printOperation(Operation *inst,
     return success();
   }
   if (auto op = dyn_cast<llhd::NegOp>(inst)) {
-    return printUnaryOp(inst, '-', indentAmount);
+    return printUnaryOp(inst, "-", indentAmount);
   }
   if (auto op = dyn_cast<AddIOp>(inst)) {
-    return printBinaryOp(inst, '+', indentAmount);
+    return printBinaryOp(inst, "+", indentAmount);
   }
   if (auto op = dyn_cast<SubIOp>(inst)) {
-    return printBinaryOp(inst, '-', indentAmount);
+    return printBinaryOp(inst, "-", indentAmount);
   }
   if (auto op = dyn_cast<MulIOp>(inst)) {
-    return printBinaryOp(inst, '*', indentAmount);
+    return printBinaryOp(inst, "*", indentAmount);
   }
   if (auto op = dyn_cast<UnsignedDivIOp>(inst)) {
-    return printBinaryOp(inst, '/', indentAmount);
+    return printBinaryOp(inst, "/", indentAmount);
   }
   if (auto op = dyn_cast<SignedDivIOp>(inst)) {
-    return printSignedBinaryOp(inst, '/', indentAmount);
+    return printSignedBinaryOp(inst, "/", indentAmount);
   }
   if (auto op = dyn_cast<UnsignedRemIOp>(inst)) {
     // % in Verilog is the remainder in LLHD semantics
-    return printBinaryOp(inst, '%', indentAmount);
+    return printBinaryOp(inst, "%", indentAmount);
   }
   if (auto op = dyn_cast<SignedRemIOp>(inst)) {
     // % in Verilog is the remainder in LLHD semantics
-    return printSignedBinaryOp(inst, '%', indentAmount);
+    return printSignedBinaryOp(inst, "%", indentAmount);
   }
   if (auto op = dyn_cast<llhd::SModOp>(inst)) {
     emitError(op.getLoc(), "Signed modulo operation is not yet supported!");
+    return failure();
+  }
+  if (auto op = dyn_cast<CmpIOp>(inst)) {
+    switch (op.getPredicate()) {
+    case mlir::CmpIPredicate::eq:
+      return printBinaryOp(inst, "==", indentAmount);
+    case mlir::CmpIPredicate::ne:
+      return printBinaryOp(inst, "!=", indentAmount);
+    case mlir::CmpIPredicate::sge:
+      return printSignedBinaryOp(inst, ">=", indentAmount);
+    case mlir::CmpIPredicate::sgt:
+      return printSignedBinaryOp(inst, ">", indentAmount);
+    case mlir::CmpIPredicate::sle:
+      return printSignedBinaryOp(inst, "<=", indentAmount);
+    case mlir::CmpIPredicate::slt:
+      return printSignedBinaryOp(inst, "<", indentAmount);
+    case mlir::CmpIPredicate::uge:
+      return printBinaryOp(inst, ">=", indentAmount);
+    case mlir::CmpIPredicate::ugt:
+      return printBinaryOp(inst, ">", indentAmount);
+    case mlir::CmpIPredicate::ule:
+      return printBinaryOp(inst, "<=", indentAmount);
+    case mlir::CmpIPredicate::ult:
+      return printBinaryOp(inst, "<", indentAmount);
+    }
     return failure();
   }
   if (auto op = dyn_cast<llhd::InstOp>(inst)) {
@@ -305,7 +329,6 @@ mlir::llhd::VerilogPrinter::printOperation(Operation *inst,
     out << ";\n";
     return success();
   }
-  // TODO: insert all comparison operations here
   // TODO: insert structural operations here
   return failure();
 }
