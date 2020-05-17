@@ -12,7 +12,7 @@ add_mlir_dialect_library(MLIRLLHD
   LINK_LIBS PUBLIC
   MLIREDSC
   MLIRIR
-  MLIRSideEffects
+  MLIRSideEffectInterfaces
   MLIRControlFlowInterfaces
   MLIRCallInterfaces
 )
