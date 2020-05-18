@@ -665,27 +665,29 @@ def LLHD_InstOp : LLHD_Op<"inst", [CallOpInterface, HasParent<"EntityOp">,
     let summary = "Instantiates a process or entity.";
     let description = [{
         Instantiates a process or entity and thus allows to build hierarchies.
-        Can only be used within an entity.
+        Can only be used within an entity. An instance defines a unique name
+        within the entity it resides in.
 
         Syntax:
         ```
-        inst-op ::= `llhd.inst` symbol-name `(` ssa-input-list `)` `->` `(` ssa-output-list `)` attr-dict `:` functional-type(ssa-input-list, ssa-output-list)
+        inst-op ::= `llhd.inst` inst-name symbol-name `(` ssa-input-list `)` `->` `(` ssa-output-list `)` attr-dict `:` functional-type(ssa-input-list, ssa-output-list)
         ```
 
         Examples:
         ```
-        llhd.inst @empty() -> () : () -> ()
-        llhd.inst @proc_symbol() -> (%out0) : () -> !llhd.sig<i32>
-        llhd.inst @entity_symbol(%in0, %in1) -> (%out0, %out1) : (!llhd.sig<i32>, !llhd.sig<i16>) -> (!llhd.sig<i8>, !llhd.sig<i4>)
+        llhd.inst "foo" @empty() -> () : () -> ()
+        llhd.inst "bar" @proc_symbol() -> (%out0) : () -> !llhd.sig<i32>
+        llhd.inst "baz" @entity_symbol(%in0, %in1) -> (%out0, %out1) : (!llhd.sig<i32>, !llhd.sig<i16>) -> (!llhd.sig<i8>, !llhd.sig<i4>)
         ```
     }];
 
-    let arguments = (ins FlatSymbolRefAttr:$callee,
+    let arguments = (ins StrAttr:$name,
+                         FlatSymbolRefAttr:$callee,
                          Variadic<LLHD_AnySigType>:$inputs,
                          Variadic<LLHD_AnySigType>:$outputs);
 
     let assemblyFormat = [{
-        $callee `(` $inputs `)` `->` `(` $outputs `)` attr-dict `:`
+        $name $callee `(` $inputs `)` `->` `(` $outputs `)` attr-dict `:`
         functional-type($inputs, $outputs)
     }];
 

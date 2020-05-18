@@ -342,13 +342,20 @@ LogicalResult mlir::llhd::EntityOp::verifyBody() {
 
   // check signal names are unique
   llvm::StringMap<bool> sigMap;
-  auto walkResult = walk([&sigMap](Operation *op) -> WalkResult {
+  llvm::StringMap<bool> instMap;
+  auto walkResult = walk([&sigMap, &instMap](Operation *op) -> WalkResult {
     if (auto sigOp = dyn_cast<SigOp>(op)) {
       if (sigMap[sigOp.name()]) {
         return sigOp.emitError("Redefinition of signal named '")
                << sigOp.name() << "'!";
       }
       sigMap.insert_or_assign(sigOp.name(), true);
+    } else if (auto instOp = dyn_cast<InstOp>(op)) {
+      if (instMap[instOp.name()]) {
+        return instOp.emitError("Redefinition of instance named '")
+               << instOp.name() << "'!";
+      }
+      instMap.insert_or_assign(instOp.name(), true);
     }
     return WalkResult::advance();
   });
