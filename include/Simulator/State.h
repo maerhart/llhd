@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "llvm/ADT/PriorityQueue.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
@@ -46,6 +47,9 @@ private:
 
 /// The simulator's internal representation of a signal.
 struct Signal {
+  /// Construct an "empty" signal.
+  Signal(std::string name, std::string owner);
+
   /// Construct a signal with the given name, owner and initial value.
   Signal(std::string name, std::string owner, uint8_t *value, uint64_t size);
 
@@ -59,11 +63,15 @@ struct Signal {
   /// name is lexically smaller than rhs, in case they share the same owner
   bool operator<(const Signal &rhs) const;
 
-  /// Return the signal value in dumpable format: "owner/name  value"
+  /// Return the signal value in dumpable format: "0x<value>"
   std::string dump();
 
   std::string name;
   std::string owner;
+  // the list of instances this signal triggers
+  std::vector<std::string> triggers;
+  // the list of instances this signal is an output of
+  std::vector<std::string> outOf;
   uint64_t size;
   uint8_t *value;
 };
@@ -97,6 +105,26 @@ public:
   void insertOrUpdate(Time time, int index, std::vector<uint8_t> &bytes);
 };
 
+/// The simulator internal representation of an instance
+struct Instance {
+  Instance() = default;
+
+  Instance(std::string name, std::string parent) : name(name), parent(parent) {}
+
+  // the instance name
+  std::string name;
+  // the instance parent's name
+  std::string parent;
+  // the instance's base unit
+  std::string unit;
+  // the signals the unit defines
+  std::vector<int> signalTable;
+  // the input list
+  std::vector<int> sensitivityList;
+  // the output list
+  std::vector<int> outputs;
+};
+
 /// The simulator's state. It contains the current simulation time, signal
 /// values and the event queue.
 struct State {
@@ -114,16 +142,27 @@ struct State {
   Signal getSignal(int index);
 
   /// Add a new signal to the state. Returns the index of the new signal.
-  int addSignal(std::string name, std::string owner, uint8_t *value,
-                uint64_t size);
+  int addSignal(std::string name, std::string owner);
+
+  int addSignalData(int index, std::string owner, uint8_t *value,
+                    uint64_t size);
 
   /// Update the signal at position i in the signals list to the given value.
   void updateSignal(int index, std::vector<uint8_t> &bytes);
 
-  /// Dump a signal to llvm::errs().
+  /// Dump a signal to the out stream. One entry is added for every instance the
+  /// signal appears in.
   void dumpSignal(llvm::raw_ostream &out, int index);
 
+  /// Dump the instance layout. Used for testing purposes.
+  void dumpLayout();
+
+  /// Dump the instances each signal triggers. Used for testing purposes.
+  void dumpSignalTriggers();
+
   Time time;
+  std::string root;
+  llvm::StringMap<Instance> instances;
   std::vector<Signal> signals;
   UpdateQueue queue;
 };

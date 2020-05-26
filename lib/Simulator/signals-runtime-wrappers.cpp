@@ -10,17 +10,12 @@ using namespace mlir::llhd::sim;
 // Runtime interface
 //===----------------------------------------------------------------------===//
 
-int alloc_signal(State *state, char *name, char *owner, uint8_t *value,
+int alloc_signal(State *state, int index, char *owner, uint8_t *value,
                  int64_t size) {
   assert(state && "alloc_signal: state not found");
-  std::string sName(name), sOwner(owner);
-  // if a signal with the same name and owner has already been allocated, return
-  // the index of the signal
-  for (int i = 0; i < state->signals.size(); i++) {
-    if (state->signals[i].name == sName && state->signals[i].owner == sOwner)
-      return i;
-  }
-  return state->addSignal(sName, sOwner, value, size);
+  std::string sOwner(owner);
+
+  return state->addSignalData(index, sOwner, value, size);
 }
 
 int gather_signal(State *state, char *name, char *owner) {

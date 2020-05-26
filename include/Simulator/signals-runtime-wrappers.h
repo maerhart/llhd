@@ -11,7 +11,7 @@ extern "C" {
 
 /// Allocate a new signal. The index of the new signal in the state's list of
 /// signals is returned.
-int alloc_signal(mlir::llhd::sim::State *state, char *name, char *owner,
+int alloc_signal(mlir::llhd::sim::State *state, int index, char *owner,
                  uint8_t *value, int64_t size);
 
 /// Gather the index of the signal in the signal list, given the name and the

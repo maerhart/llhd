@@ -31,11 +31,14 @@ static cl::opt<bool>
     dumpLLVMDialect("dump-llvm-dialect",
                     cl::desc("Dump the LLVM IR dialect module"));
 
-static cl::opt<bool> dumpLLVM("dump-llvm-ir",
-                              cl::desc("Dump the LLVM IR module"));
+static cl::opt<bool> dumpLLVMIR("dump-llvm-ir",
+                                cl::desc("Dump the LLVM IR module"));
 
 static cl::opt<bool> dumpMLIR("dump-mlir",
                               cl::desc("Dump the original MLIR module"));
+
+static cl::opt<bool> dumpLayout("dump-layout",
+                                cl::desc("Dump the gathered instance layout"));
 
 static cl::opt<std::string> root(
     "root",
@@ -50,10 +53,15 @@ int parseMLIR(MLIRContext &context, OwningModuleRef &module) {
   return 0;
 }
 
-int dumpLLVMIR(mlir::ModuleOp module) {
+int dumpLLVM(ModuleOp *module, MLIRContext &context) {
+  if (dumpLLVMDialect) {
+    module->dump();
+    llvm::errs() << "\n";
+    return 0;
+  }
 
   // Translate the module, that contains the LLVM dialect, to LLVM IR.
-  auto llvmModule = mlir::translateModuleToLLVMIR(module);
+  auto llvmModule = mlir::translateModuleToLLVMIR(*module);
   if (!llvmModule) {
     llvm::errs() << "Failed to emit LLVM IR\n";
     return -1;
@@ -102,22 +110,18 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  mlir::PassManager pm(&context);
-  pm.addPass(llhd::createConvertLLHDToLLVMPass());
-  pm.run(*module);
+  llhd::sim::Engine engine(output->os(), module, context, root);
 
-  if (dumpLLVMDialect) {
-    module->dump();
-    llvm::errs() << "\n";
-    return 0;
-  };
+  if (dumpLLVMDialect || dumpLLVMIR) {
+    return dumpLLVM(engine.getModuleRef(), context);
+  }
 
-  if (dumpLLVM) {
-    dumpLLVMIR(*module);
+  if (dumpLayout) {
+    engine.getState()->dumpLayout();
+    engine.getState()->dumpSignalTriggers();
     return 0;
   }
 
-  llhd::sim::Engine engine(output->os(), *module, root);
   engine.simulate(nSteps);
 
   output->keep();

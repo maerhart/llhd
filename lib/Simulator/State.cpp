@@ -44,6 +44,9 @@ std::string Time::dump() {
 // Signal
 //===----------------------------------------------------------------------===//
 
+Signal::Signal(std::string name, std::string owner)
+    : name(name), owner(owner), value(nullptr), size(0) {}
+
 Signal::Signal(std::string name, std::string owner, uint8_t *value,
                uint64_t size)
     : name(name), owner(owner), size(size), value(value) {}
@@ -68,8 +71,7 @@ bool Signal::operator<(const Signal &rhs) const {
 
 std::string Signal::dump() {
   std::stringstream ss;
-  ss << owner << "/" << name << "  "
-     << "0x";
+  ss << "0x";
   for (int i = size - 1; i >= 0; i--) {
     ss << std::setw(2) << std::setfill('0') << std::hex
        << static_cast<int>(value[i]);
@@ -124,10 +126,16 @@ void State::pushQueue(Time t, int index, std::vector<uint8_t> &bytes) {
 }
 
 /// Add a new signal to the state. Returns the index of the new signal.
-int State::addSignal(std::string name, std::string owner, uint8_t *value,
-                     uint64_t size) {
-  signals.push_back(Signal(name, owner, value, size));
+int State::addSignal(std::string name, std::string owner) {
+  signals.push_back(Signal(name, owner));
   return signals.size() - 1;
+}
+
+int State::addSignalData(int index, std::string owner, uint8_t *value,
+                         uint64_t size) {
+  int globalIdx = instances[owner].signalTable[index];
+  signals[globalIdx].value = value;
+  signals[globalIdx].size = size;
 }
 
 /// Update the signal at position i in the signals list to the given value.
@@ -139,5 +147,69 @@ void State::updateSignal(int index, std::vector<uint8_t> &bytes) {
 }
 
 void State::dumpSignal(llvm::raw_ostream &out, int index) {
-  out << time.dump() << "  " << signals[index].dump() << "\n";
+  auto &sig = signals[index];
+  out << time.dump() << "  " << sig.owner << "/" << sig.name << "  "
+      << sig.dump() << "\n";
+  for (auto inst : sig.triggers) {
+    std::string curr = inst, path = inst;
+    do {
+      curr = instances[curr].parent;
+      path = curr + "/" + path;
+    } while (instances[curr].name != sig.owner);
+    out << time.dump() << "  " << path << "/" << sig.name << "  " << sig.dump()
+        << "\n";
+  }
+  for (auto inst : sig.outOf) {
+    std::string path = inst;
+    std::string curr = inst;
+    do {
+      curr = instances[curr].parent;
+      path = curr + "/" + path;
+    } while (instances[curr].name != sig.owner);
+    out << time.dump() << "  " << path << "/" << sig.name << "  " << sig.dump()
+        << "\n";
+  }
+}
+
+void State::dumpLayout() {
+  llvm::errs() << "::------------------- Layout -------------------::\n";
+  for (auto &inst : instances) {
+    llvm::errs() << inst.getKey().str() << ":\n";
+    llvm::errs() << "---parent: " << inst.getValue().parent << "\n";
+    llvm::errs() << "---signal table: ";
+    for (auto sig : inst.getValue().signalTable) {
+      llvm::errs() << sig << " ";
+    }
+    llvm::errs() << "\n";
+    llvm::errs() << "---sensitivity list: ";
+    for (auto in : inst.getValue().sensitivityList) {
+      llvm::errs() << in << " ";
+    }
+    llvm::errs() << "\n";
+    llvm::errs() << "---output list: ";
+    for (auto out : inst.getValue().outputs) {
+      llvm::errs() << out << " ";
+    }
+    llvm::errs() << "\n";
+  }
+  llvm::errs() << "::----------------------------------------------::\n";
+}
+
+void State::dumpSignalTriggers() {
+  llvm::errs() << "::------------- Signal information -------------::\n";
+  for (int i = 0; i < signals.size(); i++) {
+    llvm::errs() << signals[i].owner << "/" << signals[i].name
+                 << " triggers: " << signals[i].owner << " ";
+    for (auto trig : signals[i].triggers) {
+      llvm::errs() << trig << " ";
+    }
+    llvm::errs() << "\n";
+    llvm::errs() << signals[i].owner << "/" << signals[i].name
+                 << " is output of: " << signals[i].owner << " ";
+    for (auto out : signals[i].outOf) {
+      llvm::errs() << out << " ";
+    }
+    llvm::errs() << "\n";
+  }
+  llvm::errs() << "::----------------------------------------------::\n";
 }
