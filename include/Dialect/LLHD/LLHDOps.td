@@ -8,7 +8,7 @@ include "mlir/IR/SymbolInterfaces.td"
 include "Dialect/LLHD/LLHDBase.td"
 
 //===----------------------------------------------------------------------===//
-// Constant Operation
+// Value Manipulation Operations
 //===----------------------------------------------------------------------===//
 
 def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
@@ -39,6 +39,41 @@ def LLHD_ConstOp : LLHD_Op<"const", [ConstantLike, NoSideEffect]> {
     let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_TimeType]>:$out);
 
     let hasFolder = 1;
+}
+
+def LLHD_ExtsOp : LLHD_Op<"exts"> {
+    let summary = "Extract a slice of consecutive elements.";
+
+    let description = [{
+        The `llhd.exts` operation allows acces of a slice of the `%target`
+        operand. The `$start` attribute defines the index of the first element,
+        while the `$length` attribute defines the stride of the slice.
+        The return type is the same as `%target` but with width `$lenth`.
+        If `%target` is a signal, a new subsignal aliasing the slice will be
+        returned.
+
+        **Examples:**
+        ```
+        %0 = llhd.const 123 : i32
+        %1 = llhd.exts %0, 0, 2 : i32 to i2
+
+        %2 = llhd.sig %0 : i32
+        %3 = llhd.exts %2, 0, 5 : !llhd.sig<i32> to !llhd.sig<i5>
+        ```
+
+    }];
+
+    let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>: $target,
+                         IndexAttr: $start,
+                         IndexAttr: $length);
+    let results = (outs AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>: $result);
+
+    let assemblyFormat = [{
+        $target `,` $start `,` $length  attr-dict `:`
+        type($target) `to` type($result)
+        }];
+
+    let verifier = [{ return ::verify(*this); }];
 }
 
 //===----------------------------------------------------------------------===//

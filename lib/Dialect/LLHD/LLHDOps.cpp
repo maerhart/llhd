@@ -50,6 +50,44 @@ OpFoldResult llhd::ConstOp::fold(ArrayRef<Attribute> operands) {
 }
 
 //===----------------------------------------------------------------------===//
+// ExtsOp
+//===----------------------------------------------------------------------===//
+
+static LogicalResult verify(llhd::ExtsOp op) {
+  // check the kinds match
+  if (op.target().getType().getKind() != op.result().getType().getKind())
+    return op.emitError("the target and result kinds have to match");
+
+  auto len = op.lengthAttr().getInt();
+  unsigned outWidth;
+  unsigned inWidth;
+  if (auto intRes = op.result().getType().dyn_cast<IntegerType>()) {
+    outWidth = intRes.getIntOrFloatBitWidth();
+    inWidth = op.target().getType().getIntOrFloatBitWidth();
+  } else if (auto sigRes = op.result().getType().dyn_cast<llhd::SigType>()) {
+    outWidth = sigRes.getUnderlyingType().getIntOrFloatBitWidth();
+    inWidth = op.target()
+                  .getType()
+                  .dyn_cast<llhd::SigType>()
+                  .getUnderlyingType()
+                  .getIntOrFloatBitWidth();
+  }
+
+  // check the output width matches the length
+  if (outWidth != len)
+    return op.emitError("the result bit width has to match the given length. "
+                        "Expected ")
+           << len << " but got " << outWidth;
+
+  // check length is at most the same as target's type
+  if (outWidth > inWidth)
+    return op.emitError(
+        "the result bit width cannot be larger than the target width");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // NegOp
 //===----------------------------------------------------------------------===//
 
