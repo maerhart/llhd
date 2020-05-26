@@ -24,6 +24,7 @@
 #include "Transforms/Passes.h"
 
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
+#include "mlir/IR/AsmState.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
 #include "mlir/Pass/Pass.h"
@@ -82,6 +83,7 @@ int main(int argc, char **argv) {
   // Initialize LLVM
   InitLLVM y(argc, argv);
 
+  registerAsmPrinterCLOptions();
   // Register any pass manager command line options.
   registerPassManagerCLOptions();
   PassPipelineCLParser passPipeline("", "Compiler passes to run");
