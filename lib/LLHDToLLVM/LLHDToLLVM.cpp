@@ -658,7 +658,7 @@ using OrOpConversion = OneToOneConvertToLLVMPattern<llhd::OrOp, LLVM::OrOp>;
 using XorOpConversion = OneToOneConvertToLLVMPattern<llhd::XorOp, LLVM::XOrOp>;
 
 //===----------------------------------------------------------------------===//
-// Constant conversions
+// Value manipulation conversions
 //===----------------------------------------------------------------------===//
 
 /// Lower an LLHD constant operation to LLVM. Time constant are treated as a
@@ -692,6 +692,51 @@ struct ConstOpConversion : public ConvertToLLVMPattern {
   }
 };
 
+/// Convert an llhd.exts operation. For integers, the value is shifted to the
+/// start index and then truncated to the final length. Other types are not yet
+/// supported and fail the conversion.
+struct ExtsOpConversion : public ConvertToLLVMPattern {
+  explicit ExtsOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(llhd::ExtsOp::getOperationName(), ctx,
+                             typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto extsOp = cast<ExtsOp>(op);
+
+    OperandAdaptor<ExtsOp> transformed(operands);
+
+    auto indexTy = typeConverter.convertType(extsOp.startAttr().getType());
+
+    if (auto retTy = extsOp.result().getType().isa<IntegerType>()) {
+      auto resTy = typeConverter.convertType(extsOp.result().getType());
+      // get attributes as constants
+      auto startConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), indexTy,
+                                                          extsOp.startAttr());
+      // adjust index const for shifting
+      Value adjusted;
+      if (extsOp.target().getType().getIntOrFloatBitWidth() < 64) {
+        adjusted = rewriter.create<LLVM::TruncOp>(
+            op->getLoc(), transformed.target().getType(), startConst);
+      } else {
+        adjusted = rewriter.create<LLVM::ZExtOp>(
+            op->getLoc(), transformed.target().getType(), startConst);
+      }
+
+      // shift right by index
+      auto shr = rewriter.create<LLVM::LShrOp>(op->getLoc(),
+                                               transformed.target().getType(),
+                                               transformed.target(), adjusted);
+      // truncate to length
+      rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, resTy, shr);
+
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct LLHDToLLVMLoweringPass
     : public ConvertLLHDToLLVMBase<LLHDToLLVMLoweringPass> {
   void runOnOperation() override;
@@ -702,8 +747,8 @@ void llhd::populateLLHDToLLVMConversionPatterns(
     LLVMTypeConverter &converter, OwningRewritePatternList &patterns) {
   MLIRContext *ctx = converter.getDialect()->getContext();
 
-  // constant conversion patterns
-  patterns.insert<ConstOpConversion>(ctx, converter);
+  // value manipulation conversion patterns
+  patterns.insert<ConstOpConversion, ExtsOpConversion>(ctx, converter);
   // bitwise conversion patterns
   patterns.insert<NotOpConversion, ShrOpConversion, ShlOpConversion>(ctx,
                                                                      converter);
