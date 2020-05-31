@@ -51,8 +51,9 @@ int Engine::simulate(int n) {
   assert(engine && "engine not found");
   assert(state && "state not found");
 
+  SmallVector<void *, 1> arg({&state});
   // initialize simulation state
-  auto invocationResult = engine->invoke("llhd_init", state);
+  auto invocationResult = engine->invoke("llhd_init", arg);
   if (invocationResult) {
     llvm::errs() << "Failed invocation of llhd_init: " << invocationResult;
     return -1;
@@ -115,8 +116,10 @@ int Engine::simulate(int n) {
                              outputList.end());
       auto argTable = sensitivityList.data();
 
+      SmallVector<void *, 3> args({&state, &sigTable, &argTable});
+
       // run the unit
-      auto invocationResult = engine->invoke(name, state, sigTable, argTable);
+      auto invocationResult = engine->invoke(name, args);
       if (invocationResult) {
         llvm::errs() << "Failed invocation of " << root << ": "
                      << invocationResult;
