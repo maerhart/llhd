@@ -4,8 +4,8 @@ llhd.entity @acc (%clk : !llhd.sig<i1>, %x : !llhd.sig<i32>, %en : !llhd.sig<i1>
     // Output signals also need to be created in the entity instantiating this entity
     // We can only drive the signal to zero here, to make sure it has the right value
     // %q = llhd.sig %zero : i32 -> !llhd.sig<i32>
-    llhd.inst @acc_ff(%clk, %d) -> (%q) : (!llhd.sig<i1>, !llhd.sig<i32>) -> !llhd.sig<i32>
-    llhd.inst @acc_comb(%q, %x, %en) -> (%d) : (!llhd.sig<i32>, !llhd.sig<i32>, !llhd.sig<i1>) -> !llhd.sig<i32>
+    llhd.inst "acc_ff" @acc_ff(%clk, %d) -> (%q) : (!llhd.sig<i1>, !llhd.sig<i32>) -> !llhd.sig<i32>
+    llhd.inst "acc_comb" @acc_comb(%q, %x, %en) -> (%d) : (!llhd.sig<i32>, !llhd.sig<i32>, !llhd.sig<i1>) -> !llhd.sig<i32>
 }
 
 llhd.proc @acc_ff(%clk : !llhd.sig<i1>, %d : !llhd.sig<i32>) -> (%q : !llhd.sig<i32>) {
