@@ -4,7 +4,7 @@
 // CHECK-SAME: %[[LHS:.*]]: !llvm.i1,
 // CHECK-SAME: %[[RHS:.*]]: !llvm.i1
 func @convert_bitwise_i1(%lhs : i1, %rhs : i1) {
-    // CHECK-NEXT: %[[MASK:.*]] = llvm.mlir.constant(1 : i1) : !llvm.i1
+    // CHECK-NEXT: %[[MASK:.*]] = llvm.mlir.constant(true) : !llvm.i1
     // CHECK-NEXT: %{{.*}} = llvm.xor %[[LHS]], %[[MASK]] : !llvm.i1
     %0 = llhd.not %lhs : i1
     // CHECK-NEXT: %{{.*}} = llvm.and %[[LHS]], %[[RHS]] : !llvm.i1

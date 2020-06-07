@@ -2,7 +2,7 @@
 
 // CHECK-LABEL: @convert_const
 llvm.func @convert_const() {
-    // CHECK-NEXT: %{{.*}} = llvm.mlir.constant(1 : i1) : !llvm.i1
+    // CHECK-NEXT: %{{.*}} = llvm.mlir.constant(true) : !llvm.i1
     %0 = llhd.const 1 : i1
 
     // CHECK-NEXT %{{.*}} = llvm.mlir.constant(0 : i32) : !llvm.i32
