@@ -5,7 +5,7 @@
 // CHECK-SAME: %[[SIGTAB:.*]]: !llvm<"i32*">,
 // CHECK-SAME: %{{.*}}: !llvm<"i32*">
 llhd.entity @convert_sig () -> () {
-    // CHECK-NEXT: %[[C0:.*]] = llvm.mlir.constant(0 : i1) : !llvm.i1
+    // CHECK-NEXT: %[[C0:.*]] = llvm.mlir.constant(false) : !llvm.i1
     %init = llhd.const 0 : i1
     // CHECK-NEXT: %[[IDX0:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
     // CHECK-NEXT: %[[GEP0:.*]] = llvm.getelementptr %[[SIGTAB]][%[[IDX0]]] : (!llvm<"i32*">, !llvm.i32) -> !llvm<"i32*">
@@ -35,7 +35,7 @@ llhd.entity @convert_drv (%sI1 : !llhd.sig<i1>) -> () {
     // CHECK-NEXT: %[[IDX0:.*]] = llvm.mlir.constant(0 : i32) : !llvm.i32
     // CHECK-NEXT: %[[GEP0:.*]] = llvm.getelementptr %[[ARGTAB]][%[[IDX0]]] : (!llvm<"i32*">, !llvm.i32) -> !llvm<"i32*">
     // CHECK-NEXT: %[[L0:.*]] = llvm.load %[[GEP0]] : !llvm<"i32*">
-    // CHECK-NEXT: %[[C0:.*]] = llvm.mlir.constant(0 : i1) : !llvm.i1
+    // CHECK-NEXT: %[[C0:.*]] = llvm.mlir.constant(false) : !llvm.i1
     %cI1 = llhd.const 0 : i1
     // CHECK-NEXT: %[[S0:.*]] = llvm.mlir.constant(1 : i32) : !llvm.i32
     // CHECK-NEXT: %[[A0:.*]] = llvm.alloca %[[S0]] x !llvm.i1 {alignment = 4 : i64} : (!llvm.i32) -> !llvm<"i1*">
