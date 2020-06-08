@@ -17,7 +17,7 @@ llhd.proc @acc_ff(%clk : !llhd.sig<i1>, %d : !llhd.sig<i32>) -> (%q : !llhd.sig<
     %clk1 = llhd.prb %clk : !llhd.sig<i1>
     %chg = cmpi "ne", %clk0, %clk1 : i1
     %posedge = llhd.and %chg, %clk1 : i1
-    cond_br %posedge, ^init, ^event
+    cond_br %posedge, ^event, ^init
 ^event:
     %dp = llhd.prb %d : !llhd.sig<i32>
     %delay = llhd.const #llhd.time<1ns, 0d, 0e> : !llhd.time
@@ -32,7 +32,7 @@ llhd.proc @acc_comb(%q : !llhd.sig<i32>, %x : !llhd.sig<i32>, %en : !llhd.sig<i1
     %enp = llhd.prb %en : !llhd.sig<i1>
     %delay = llhd.const #llhd.time<2ns, 0d, 0e> : !llhd.time
     llhd.drv %d, %qp after %delay : !llhd.sig<i32>
-    cond_br %enp, ^final, ^enabled
+    cond_br %enp, ^enabled, ^final
 ^enabled:
     %xp = llhd.prb %x : !llhd.sig<i32>
     %sum = addi %qp, %xp : i32
