@@ -438,7 +438,6 @@ struct PrbOpConversion : public ConvertToLLVMPattern {
   }
 };
 
-// TODO: update desc
 /// Convert an `llhd.drv` operation to LLVM. The result is a library call to the
 /// `@drive_signal` function, which declaration is inserted at the beginning of
 /// the module if missing. The required arguments are either generated or
