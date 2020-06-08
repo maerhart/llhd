@@ -1,9 +1,13 @@
 #include "Simulator/signals-runtime-wrappers.h"
 #include "Simulator/State.h"
+
+#include "llvm/ADT/APInt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
 
+using namespace llvm;
 using namespace mlir::llhd::sim;
 
 //===----------------------------------------------------------------------===//
@@ -31,27 +35,41 @@ int gather_signal(State *state, char *name, char *owner) {
   exit(EXIT_FAILURE);
 }
 
-uint8_t *probe_signal(State *state, int index) {
+SignalDetail *probe_signal(State *state, int index) {
   assert(state && "probe_signal: state not found");
   auto &sig = state->signals[index];
-  return sig.value;
+  return &sig.detail;
 }
 
-void drive_signal(State *state, int index, uint8_t *value, uint64_t size,
+void drive_signal(State *state, int index, uint8_t *value, uint64_t width,
                   int time, int delta, int eps) {
   assert(state && "drive_signal: state not found");
 
-  // move bytes to a vector (the alloca'd value pointer get's freed once the jit
-  // function returns)
-  std::vector<uint8_t> bytes;
-  for (int i = 0; i < size; i++) {
-    bytes.push_back(value[i]);
-  }
+  APInt drive(width, ArrayRef<uint64_t>(reinterpret_cast<uint64_t *>(value),
+                                        state->signals[index].size));
 
-  // create Time struct
   Time sTime(time, delta, eps);
+
+  int originIdx;
+  if (state->signals[index].origin < 0)
+    originIdx = index;
+  else
+    originIdx = state->signals[index].origin;
+
+  int bitOffset = (state->signals[index].detail.value -
+                   state->signals[originIdx].detail.value) *
+                      8 +
+                  state->signals[index].detail.offset;
+
   // spawn new event
-  state->pushQueue(sTime, index, bytes);
+  state->pushQueue(sTime, originIdx, bitOffset, drive);
+}
+
+int add_subsignal(mlir::llhd::sim::State *state, int origin, uint8_t *ptr,
+                  uint64_t len, uint64_t offset) {
+  int size = std::ceil((len + offset) / 8.0);
+  state->signals.push_back(Signal(origin, ptr, size, offset));
+  return (state->signals.size() - 1);
 }
 
 //===----------------------------------------------------------------------===//
@@ -72,16 +90,28 @@ void pop_queue(State *state) {
   state->time.time = pop.time.time;
   if (!pop.changes.empty()) {
     for (auto change : pop.changes) {
-      assert(state->signals[change.first].size == change.second.size() &&
-             "size mismatch");
-      bool equal = true;
-      for (int i = 0; i < change.second.size(); i++) {
-        equal &= (state->signals[change.first].value[i] == change.second[i]);
+      Signal *curr = &(state->signals[change.first]);
+      APInt buff(
+          curr->size * 8,
+          ArrayRef<uint64_t>(reinterpret_cast<uint64_t *>(curr->detail.value),
+                             curr->size));
+
+      for (auto update : change.second) {
+        if (update.second.getBitWidth() < buff.getBitWidth())
+          buff.insertBits(update.second, update.first);
+        else
+          buff = update.second;
       }
-      if (equal)
+
+      // continue if updated signal is equal to the initial
+      if (std::memcmp(curr->detail.value, buff.getRawData(), curr->size) == 0)
         continue;
 
-      state->updateSignal(change.first, change.second);
+      // update signal value
+      std::memcpy(curr->detail.value, buff.getRawData(),
+                  state->signals[change.first].size);
+
+      // dump the updated signal
       state->dumpSignal(llvm::outs(), change.first);
     }
   }

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 
+using namespace llvm;
 using namespace mlir;
 using namespace llhd::sim;
 
@@ -45,17 +46,20 @@ std::string Time::dump() {
 //===----------------------------------------------------------------------===//
 
 Signal::Signal(std::string name, std::string owner)
-    : name(name), owner(owner), value(nullptr), size(0) {}
+    : name(name), owner(owner), size(0), detail({nullptr, 0}) {}
 
 Signal::Signal(std::string name, std::string owner, uint8_t *value,
                uint64_t size)
-    : name(name), owner(owner), size(size), value(value) {}
+    : name(name), owner(owner), size(size), detail({value, 0}) {}
+
+Signal::Signal(int origin, uint8_t *value, uint64_t size, uint64_t offset)
+    : origin(origin), size(size), detail({value, offset}) {}
 
 bool Signal::operator==(const Signal &rhs) const {
   if (owner != rhs.owner || name != rhs.name || size != rhs.size)
     return false;
   for (int i = 0; i < size; i++) {
-    if (value[i] != rhs.value[i])
+    if (detail.value[i] != rhs.detail.value[i])
       return false;
   }
   return true;
@@ -74,7 +78,7 @@ std::string Signal::dump() {
   ss << "0x";
   for (int i = size - 1; i >= 0; i--) {
     ss << std::setw(2) << std::setfill('0') << std::hex
-       << static_cast<int>(value[i]);
+       << static_cast<int>(detail.value[i]);
   }
   return ss.str();
 }
@@ -87,23 +91,23 @@ bool Slot::operator<(const Slot &rhs) const { return time < rhs.time; }
 
 bool Slot::operator>(const Slot &rhs) const { return rhs.time < time; }
 
-void Slot::insertChange(int index, std::vector<uint8_t> &bytes) {
-  changes[index] = bytes;
+void Slot::insertChange(int index, int bitOffset, APInt &bytes) {
+  changes[index].push_back(std::make_pair(bitOffset, bytes));
 }
 
 //===----------------------------------------------------------------------===//
 // UpdateQueue
 //===----------------------------------------------------------------------===//
-void UpdateQueue::insertOrUpdate(Time time, int index,
-                                 std::vector<uint8_t> &bytes) {
+void UpdateQueue::insertOrUpdate(Time time, int index, int bitOffset,
+                                 APInt &bytes) {
   for (int i = 0; i < c.size(); i++) {
     if (time == c[i].time) {
-      c[i].insertChange(index, bytes);
+      c[i].insertChange(index, bitOffset, bytes);
       return;
     }
   }
   Slot newSlot(time);
-  newSlot.insertChange(index, bytes);
+  newSlot.insertChange(index, bitOffset, bytes);
   push(newSlot);
 }
 
@@ -120,9 +124,9 @@ Slot State::popQueue() {
 
 /// Push a new event in the event queue and return the index of the new event
 /// in the queue.
-void State::pushQueue(Time t, int index, std::vector<uint8_t> &bytes) {
+void State::pushQueue(Time t, int index, int bitOffset, APInt &bytes) {
   Time newTime = time + t;
-  queue.insertOrUpdate(newTime, index, bytes);
+  queue.insertOrUpdate(newTime, index, bitOffset, bytes);
 }
 
 /// Add a new signal to the state. Returns the index of the new signal.
@@ -134,16 +138,8 @@ int State::addSignal(std::string name, std::string owner) {
 int State::addSignalData(int index, std::string owner, uint8_t *value,
                          uint64_t size) {
   int globalIdx = instances[owner].signalTable[index];
-  signals[globalIdx].value = value;
+  signals[globalIdx].detail.value = value;
   signals[globalIdx].size = size;
-}
-
-/// Update the signal at position i in the signals list to the given value.
-void State::updateSignal(int index, std::vector<uint8_t> &bytes) {
-  assert(signals[index].size == bytes.size() && "size mismatch");
-  for (int i = 0; i < signals[index].size; i++) {
-    signals[index].value[i] = bytes[i];
-  }
 }
 
 void State::dumpSignal(llvm::raw_ostream &out, int index) {

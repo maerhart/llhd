@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/PriorityQueue.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/raw_ostream.h"
@@ -45,6 +46,12 @@ struct Time {
 private:
 };
 
+/// Detail structure that can be easily accessed by the lowered code
+struct SignalDetail {
+  uint8_t *value;
+  uint64_t offset;
+};
+
 /// The simulator's internal representation of a signal.
 struct Signal {
   /// Construct an "empty" signal.
@@ -52,6 +59,9 @@ struct Signal {
 
   /// Construct a signal with the given name, owner and initial value.
   Signal(std::string name, std::string owner, uint8_t *value, uint64_t size);
+
+  /// Construct a subsignal of the signal at origin un the global signal table
+  Signal(int origin, uint8_t *value, uint64_t size, uint64_t offset);
 
   /// Default signal destructor
   ~Signal() = default;
@@ -72,8 +82,9 @@ struct Signal {
   std::vector<std::string> triggers;
   // the list of instances this signal is an output of
   std::vector<std::string> outOf;
+  int origin = -1;
   uint64_t size;
-  uint8_t *value;
+  SignalDetail detail;
 };
 
 /// The simulator's internal representation of one queue slot.
@@ -88,10 +99,10 @@ struct Slot {
   bool operator>(const Slot &rhs) const;
 
   /// Insert a change.
-  void insertChange(int index, std::vector<uint8_t> &bytes);
+  void insertChange(int index, int bitOffset, llvm::APInt &bytes);
 
-  // <signal-index, new-value>
-  std::map<int, std::vector<uint8_t>> changes;
+  // <signal-index, vec<(offset, new-value)>>
+  std::map<int, std::vector<std::pair<int, llvm::APInt>>> changes;
   Time time;
 };
 
@@ -102,7 +113,7 @@ class UpdateQueue
 public:
   /// Check wheter a slot for the given time already exists. If that's the case,
   /// add the new change to it, else create a new slot and push it to the queue.
-  void insertOrUpdate(Time time, int index, std::vector<uint8_t> &bytes);
+  void insertOrUpdate(Time time, int index, int bitOffset, llvm::APInt &bytes);
 };
 
 /// The simulator internal representation of an instance
@@ -134,9 +145,8 @@ struct State {
   /// Pop the head of the queue and update the simulation time.
   Slot popQueue();
 
-  /// Push a new event in the event queue and return the index of the new event
-  /// in the queue.
-  void pushQueue(Time time, int index, std::vector<uint8_t> &bytes);
+  /// Push a new event in the event queue.
+  void pushQueue(Time time, int index, int bitOffset, llvm::APInt &bytes);
 
   /// Get the signal at position i in the signal list.
   Signal getSignal(int index);
@@ -146,9 +156,6 @@ struct State {
 
   int addSignalData(int index, std::string owner, uint8_t *value,
                     uint64_t size);
-
-  /// Update the signal at position i in the signals list to the given value.
-  void updateSignal(int index, std::vector<uint8_t> &bytes);
 
   /// Dump a signal to the out stream. One entry is added for every instance the
   /// signal appears in.
@@ -162,6 +169,7 @@ struct State {
 
   Time time;
   std::string root;
+  int nSigs;
   llvm::StringMap<Instance> instances;
   std::vector<Signal> signals;
   UpdateQueue queue;

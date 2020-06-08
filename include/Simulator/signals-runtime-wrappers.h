@@ -18,12 +18,17 @@ int alloc_signal(mlir::llhd::sim::State *state, int index, char *owner,
 /// owner of the signal
 int gather_signal(mlir::llhd::sim::State *state, char *name, char *owner);
 
-/// Probe a signal and return a pointer to the carried value.
-uint8_t *probe_signal(mlir::llhd::sim::State *state, int index);
+/// Gather information of the signal at index.
+mlir::llhd::sim::SignalDetail *probe_signal(mlir::llhd::sim::State *state,
+                                            int index);
 
 /// Drive a value onto a signal.
 void drive_signal(mlir::llhd::sim::State *state, int index, uint8_t *value,
-                  uint64_t size, int time, int delta, int eps);
+                  uint64_t width, int time, int delta, int eps);
+
+/// Add a temporary subsignal to the global signal table
+int add_subsignal(mlir::llhd::sim::State *state, int origin, uint8_t *ptr,
+                  uint64_t len, uint64_t offset);
 
 //===----------------------------------------------------------------------===//
 // Testing methods

@@ -63,6 +63,46 @@ LLVM::LLVMFuncOp getOrInsertFunction(ModuleOp &module,
   return func;
 }
 
+/// Insert probe runtime call and extraction of details from the struct. The
+/// mlir::Values of the details are returned, in struct-order.
+std::pair<Value, Value> insertProbeSignal(ModuleOp &module,
+                                          ConversionPatternRewriter &rewriter,
+                                          LLVM::LLVMDialect *dialect,
+                                          Operation *op, Value statePtr,
+                                          Value signal) {
+  auto i8PtrTy = LLVM::LLVMType::getInt8PtrTy(dialect);
+  auto i32Ty = LLVM::LLVMType::getInt32Ty(dialect);
+  auto i64Ty = LLVM::LLVMType::getInt64Ty(dialect);
+  auto sigTy = LLVM::LLVMType::getStructTy(dialect, {i8PtrTy, i64Ty});
+
+  auto prbSignature = LLVM::LLVMType::getFunctionTy(sigTy.getPointerTo(),
+                                                    {i8PtrTy, i32Ty}, false);
+  auto prbFunc =
+      getOrInsertFunction(module, rewriter, "probe_signal", prbSignature);
+  SmallVector<Value, 2> prbArgs({statePtr, signal});
+  auto prbCall =
+      rewriter
+          .create<LLVM::CallOp>(op->getLoc(), sigTy.getPointerTo(),
+                                rewriter.getSymbolRefAttr(prbFunc), prbArgs)
+          .getResult(0);
+  auto zeroC = rewriter.create<LLVM::ConstantOp>(op->getLoc(), i32Ty,
+                                                 rewriter.getI32IntegerAttr(0));
+  auto oneC = rewriter.create<LLVM::ConstantOp>(op->getLoc(), i32Ty,
+                                                rewriter.getI32IntegerAttr(1));
+
+  auto sigPtrPtr =
+      rewriter.create<LLVM::GEPOp>(op->getLoc(), i8PtrTy.getPointerTo(),
+                                   prbCall, ArrayRef<Value>({zeroC, zeroC}));
+
+  auto offsetPtr =
+      rewriter.create<LLVM::GEPOp>(op->getLoc(), i64Ty.getPointerTo(), prbCall,
+                                   ArrayRef<Value>({zeroC, oneC}));
+  auto sigPtr = rewriter.create<LLVM::LoadOp>(op->getLoc(), i8PtrTy, sigPtrPtr);
+  auto offset = rewriter.create<LLVM::LoadOp>(op->getLoc(), i64Ty, offsetPtr);
+
+  return std::pair<Value, Value>(sigPtr, offset);
+}
+
 //===----------------------------------------------------------------------===//
 // Unit conversions
 //===----------------------------------------------------------------------===//
@@ -248,21 +288,23 @@ struct InstOpConversion : public ConvertToLLVMPattern {
           auto sizeConst = initBuilder.create<LLVM::ConstantOp>(
               rewriter.getUnknownLoc(), i64Ty,
               rewriter.getI64IntegerAttr(size));
-          llvm::SmallVector<Value, 1> margs({sizeConst});
+          // malloc an extra byte to avoid segfaulting when loading an offset
+          // signal
+          auto mallocSize = initBuilder.create<LLVM::ConstantOp>(
+              rewriter.getUnknownLoc(), i64Ty,
+              rewriter.getI64IntegerAttr(size + 1));
+          llvm::SmallVector<Value, 1> margs({mallocSize});
           auto mall = initBuilder
                           .create<LLVM::CallOp>(
                               rewriter.getUnknownLoc(), i8PtrTy,
                               rewriter.getSymbolRefAttr(mallFunc), margs)
                           .getResult(0);
-          auto bitcast =
-              initBuilder
-                  .create<LLVM::BitcastOp>(
-                      rewriter.getUnknownLoc(),
-                      typeConverter.convertType(sigOp.init().getType())
-                          .cast<LLVM::LLVMType>()
-                          .getPointerTo(),
-                      mall)
-                  .getResult();
+          auto bitcast = initBuilder.create<LLVM::BitcastOp>(
+              rewriter.getUnknownLoc(),
+              typeConverter.convertType(sigOp.init().getType())
+                  .cast<LLVM::LLVMType>()
+                  .getPointerTo(),
+              mall);
           auto initStore = initBuilder.create<LLVM::StoreOp>(
               rewriter.getUnknownLoc(), initDef, bitcast);
           Value initStatePtr = initFunc.getArgument(0);
@@ -334,9 +376,8 @@ struct SigOpConversion : public ConvertToLLVMPattern {
 };
 
 /// Convert an `llhd.prb` operation to LLVM. The result is a library call to the
-/// `@probe_signal` function, which is then bitcast to the result type and
-/// loaded. The library function declaration is inserted at the beginning of the
-/// module if not already present.
+/// `@probe_signal` function. The signal details are then extracted and used to
+/// load the final probe value.
 struct PrbOpConversion : public ConvertToLLVMPattern {
   explicit PrbOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
       : ConvertToLLVMPattern(llhd::PrbOp::getOperationName(), ctx,
@@ -356,55 +397,52 @@ struct PrbOpConversion : public ConvertToLLVMPattern {
     auto voidTy = getVoidType();
     auto i8PtrTy = getVoidPtrType();
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
+    auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
+    auto finalTy =
+        typeConverter.convertType(prbOp.getType()).cast<LLVM::LLVMType>();
 
-    // get or insert library call definition
-    auto prbFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
-    if (!prbFunc) {
-      OpBuilder moduleBuilder(module.getBodyRegion());
-      // `probe_signal` function signature: (i8* %state, i32 %sig_index) -> i8*
-      // %value
-      auto prbFuncTy =
-          LLVM::LLVMType::getFunctionTy(i8PtrTy, {i8PtrTy, i32Ty}, false);
-      prbFunc = moduleBuilder.create<LLVM::LLVMFuncOp>(rewriter.getUnknownLoc(),
-                                                       libCall, prbFuncTy);
-    }
+    // get amount of bytes to load. An extra byte is always loaded to cover the
+    // case where a subsignal spans halfway in the last byte.
+    int resWidth = prbOp.getType().getIntOrFloatBitWidth();
+    int loadWidth = (std::ceil(resWidth / 8.0) + 1) * 8;
+    auto loadTy = LLVM::LLVMType::getIntNTy(&getDialect(), loadWidth);
 
     // get pointer to state from function arguments
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
-    // define library call arguments
-    llvm::SmallVector<Value, 2> args({statePtr, transformed.signal()});
-    // create library call
-    auto probedPtr =
-        rewriter
-            .create<LLVM::CallOp>(op->getLoc(), getVoidPtrType(),
-                                  rewriter.getSymbolRefAttr(prbFunc), args)
-            .getResult(0);
 
-    // get final type
-    auto finalTy = typeConverter.convertType(prbOp.getType());
-    // get pointer of final type
-    auto finalTyPtr = finalTy.cast<LLVM::LLVMType>().getPointerTo();
+    // get signal pointer and offset
+    auto sigDetail = insertProbeSignal(module, rewriter, &getDialect(), op,
+                                       statePtr, transformed.signal());
+    auto sigPtr = sigDetail.first;
+    auto offset = sigDetail.second;
 
-    // create bitcast of library call result to pointer of final type
-    auto bitcast =
-        rewriter.create<LLVM::BitcastOp>(op->getLoc(), finalTyPtr, probedPtr);
+    // bitcast to adjusted load width
+    auto bitcast = rewriter.create<LLVM::BitcastOp>(
+        op->getLoc(), loadTy.getPointerTo(), sigPtr);
 
     // create load of probed value
-    rewriter.replaceOpWithNewOp<LLVM::LoadOp>(op, finalTy, bitcast);
+    auto loadSig = rewriter.create<LLVM::LoadOp>(op->getLoc(), loadTy, bitcast);
+
+    // TODO: cover the case of loadTy being larger than 64 bits (zext)
+    // adjust offset constant width to perform the shift
+    auto trOff = rewriter.create<LLVM::TruncOp>(op->getLoc(), loadTy, offset);
+
+    // shift loaded value by offset
+    auto shifted =
+        rewriter.create<LLVM::LShrOp>(op->getLoc(), loadTy, loadSig, trOff);
+
+    // truncate to signal width
+    rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, finalTy, shifted);
 
     return success();
   }
-
-private:
-  const std::string libCall = "probe_signal";
 };
 
+// TODO: update desc
 /// Convert an `llhd.drv` operation to LLVM. The result is a library call to the
 /// `@drive_signal` function, which declaration is inserted at the beginning of
-/// the module if missing. New `llvm.mlir.constant`s operation are also
-/// generated by extracting the required time values from the time operand. The
-/// resulting operation should not use the original time constant operation,
-/// making it possible to erase it.
+/// the module if missing. The required arguments are either generated or
+/// fetched.
 struct DrvOpConversion : public ConvertToLLVMPattern {
   explicit DrvOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
       : ConvertToLLVMPattern(llhd::DrvOp::getOperationName(), ctx,
@@ -431,8 +469,8 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     auto drvFunc = module.lookupSymbol<LLVM::LLVMFuncOp>(libCall);
     if (!drvFunc) {
       OpBuilder moduleBuilder(module.getBodyRegion());
-      // drv function signature: (i8* %state, i32 %sig_index, i32 %new_value,
-      // i32 %time, i32 %delta, i32 %eps) -> ()
+      // drv function signature: (i8* %state, i32 %sig_index, i8* %new_value,
+      // i64 width i32 %time, i32 %delta, i32 %eps) -> ()
       auto drvFuncTy = LLVM::LLVMType::getFunctionTy(
           voidTy, {i8PtrTy, i32Ty, i8PtrTy, i64Ty, i32Ty, i32Ty, i32Ty},
           /*isVarArg=*/false);
@@ -440,7 +478,14 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
                                                        libCall, drvFuncTy);
     }
 
-    //! get new value pointer
+    // get state pointer from function arguments
+    Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
+
+    int sigWidth = drvOp.value().getType().getIntOrFloatBitWidth();
+
+    auto widthConst = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(sigWidth));
+
     auto oneConst = rewriter.create<LLVM::ConstantOp>(
         op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(1));
     auto alloca = rewriter.create<LLVM::AllocaOp>(
@@ -449,12 +494,6 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
         oneConst, 4);
     rewriter.create<LLVM::StoreOp>(op->getLoc(), transformed.value(), alloca);
     auto bc = rewriter.create<LLVM::BitcastOp>(op->getLoc(), i8PtrTy, alloca);
-
-    //! get value size
-    // get value size in bytes, rounded to the next byte
-    int size = std::ceil(drvOp.value().getType().getIntOrFloatBitWidth() / 8.0);
-    auto sizeConst = rewriter.create<LLVM::ConstantOp>(
-        op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(size));
 
     // get constant time operation
     auto timeAttr = cast<llhd::ConstOp>(drvOp.time().getDefiningOp())
@@ -479,11 +518,9 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
         op->getLoc(), LLVM::LLVMType::getInt32Ty(typeConverter.getDialect()),
         epsAttr);
 
-    // get state pointer from function arguments
-    Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
     // define library call arguments
     llvm::SmallVector<Value, 7> args({statePtr, transformed.signal(), bc,
-                                      sizeConst, realTimeConst, deltaConst,
+                                      widthConst, realTimeConst, deltaConst,
                                       epsConst});
     // create library call
     rewriter.create<LLVM::CallOp>(op->getLoc(), voidTy,
@@ -708,12 +745,19 @@ struct ExtsOpConversion : public ConvertToLLVMPattern {
     OperandAdaptor<ExtsOp> transformed(operands);
 
     auto indexTy = typeConverter.convertType(extsOp.startAttr().getType());
+    auto i8PtrTy = getVoidPtrType();
+    auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
+    auto i64Ty = LLVM::LLVMType::getInt64Ty(&getDialect());
+    auto sigTy = LLVM::LLVMType::getStructTy(&getDialect(), {i8PtrTy, i64Ty});
 
-    if (auto retTy = extsOp.result().getType().isa<IntegerType>()) {
+    // get attributes as constants
+    auto startConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), indexTy,
+                                                        extsOp.startAttr());
+    auto lenConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), indexTy,
+                                                      extsOp.lengthAttr());
+
+    if (auto retTy = extsOp.result().getType().dyn_cast<IntegerType>()) {
       auto resTy = typeConverter.convertType(extsOp.result().getType());
-      // get attributes as constants
-      auto startConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), indexTy,
-                                                          extsOp.startAttr());
       // adjust index const for shifting
       Value adjusted;
       if (extsOp.target().getType().getIntOrFloatBitWidth() < 64) {
@@ -730,6 +774,51 @@ struct ExtsOpConversion : public ConvertToLLVMPattern {
                                                transformed.target(), adjusted);
       // truncate to length
       rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, resTy, shr);
+
+      return success();
+    } else if (auto resTy = extsOp.result().getType().dyn_cast<SigType>()) {
+      auto module = op->getParentOfType<ModuleOp>();
+
+      // get add_subsignal runtime call
+      auto addSubSignature = LLVM::LLVMType::getFunctionTy(
+          i32Ty, {i8PtrTy, i32Ty, i8PtrTy, i64Ty, i64Ty}, false);
+      auto addSubFunc = getOrInsertFunction(module, rewriter, "add_subsignal",
+                                            addSubSignature);
+
+      // get state pointer from arguments
+      auto statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
+
+      // get signal pointer and offset
+      auto sigDetail = insertProbeSignal(module, rewriter, &getDialect(), op,
+                                         statePtr, transformed.target());
+      auto sigPtr = sigDetail.first;
+      auto offset = sigDetail.second;
+
+      // adjust slice start point from signal's offset
+      auto adjustedStart =
+          rewriter.create<LLVM::AddOp>(op->getLoc(), offset, startConst);
+
+      // shift pointer to the new start byte
+      auto ptrToInt =
+          rewriter.create<LLVM::PtrToIntOp>(op->getLoc(), i64Ty, sigPtr);
+      auto const8 = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), indexTy, rewriter.getI64IntegerAttr(8));
+      auto ptrOffset =
+          rewriter.create<LLVM::UDivOp>(op->getLoc(), adjustedStart, const8);
+      auto shiftedPtr =
+          rewriter.create<LLVM::AddOp>(op->getLoc(), ptrToInt, ptrOffset);
+      auto newPtr =
+          rewriter.create<LLVM::IntToPtrOp>(op->getLoc(), i8PtrTy, shiftedPtr);
+
+      // compute offset into the first byte
+      auto bitOffset =
+          rewriter.create<LLVM::URemOp>(op->getLoc(), adjustedStart, const8);
+
+      // add subsignal to the state
+      SmallVector<Value, 5> addSubArgs(
+          {statePtr, transformed.target(), newPtr, lenConst, bitOffset});
+      rewriter.replaceOpWithNewOp<LLVM::CallOp>(
+          op, i32Ty, rewriter.getSymbolRefAttr(addSubFunc), addSubArgs);
 
       return success();
     }

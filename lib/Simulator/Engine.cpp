@@ -59,6 +59,11 @@ int Engine::simulate(int n) {
     return -1;
   }
 
+  // dump signals initial values
+  for (int i = 0; i < state->nSigs; i++) {
+    state->dumpSignal(out, i);
+  }
+
   int i = 0;
 
   // keep track of instances that need to wakeup
@@ -79,31 +84,45 @@ int Engine::simulate(int n) {
     state->time = pop.time;
 
     // dump changes, only if actually changed
-    unsigned actual = 0;
     for (auto change : pop.changes) {
-      assert(state->signals[change.first].size == change.second.size() &&
-             "size mismatch");
-      bool equal = true;
-      for (int i = 0; i < change.second.size(); i++) {
-        equal &= (state->signals[change.first].value[i] == change.second[i]);
+      // get update buffer
+      Signal *curr = &(state->signals[change.first]);
+      APInt buff(
+          curr->size * 8,
+          ArrayRef<uint64_t>(reinterpret_cast<uint64_t *>(curr->detail.value),
+                             curr->size));
+
+      // apply changes to buffer
+      for (auto drive : change.second) {
+        if (drive.second.getBitWidth() < buff.getBitWidth())
+          buff.insertBits(drive.second, drive.first);
+        else
+          buff = drive.second;
       }
-      if (equal)
+
+      // continue if updated signal is equal to the initial
+      if (std::memcmp(curr->detail.value, buff.getRawData(), curr->size) == 0)
         continue;
 
+      // update signal value
+      std::memcpy(curr->detail.value, buff.getRawData(),
+                  state->signals[change.first].size);
+
+      // trigger sensitive instances
       // owner is always triggered
       wakeupQueue.push_back(state->signals[change.first].owner);
       // add sensitive instances
       for (auto inst : state->signals[change.first].triggers) {
         wakeupQueue.push_back(inst);
       }
-      state->updateSignal(change.first, change.second);
+
+      // dump the updated signal
       state->dumpSignal(out, change.first);
-      actual++;
     }
-    // continue if no updates at non-zero time
-    if (actual == 0 && !state->time.isZero()) {
-      continue;
-    }
+
+    // clear temporary subsignals
+    state->signals.erase(state->signals.begin() + state->nSigs,
+                         state->signals.end());
 
     // run entities in wakeupqueue
     for (auto inst : wakeupQueue) {
@@ -124,13 +143,6 @@ int Engine::simulate(int n) {
         llvm::errs() << "Failed invocation of " << root << ": "
                      << invocationResult;
         return -1;
-      }
-    }
-
-    // dump signals initial values
-    if (state->time.isZero()) {
-      for (int i = 0; i < state->signals.size(); i++) {
-        state->dumpSignal(out, i);
       }
     }
 
@@ -166,6 +178,7 @@ void Engine::buildLayout(ModuleOp module) {
       state->signals[out].outOf.push_back(inst.getKey().str());
     }
   }
+  state->nSigs = state->signals.size();
 }
 
 void Engine::walkEntity(EntityOp entity, Instance &child) {
