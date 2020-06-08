@@ -50,11 +50,11 @@ void drive_signal(State *state, int index, uint8_t *value, uint64_t width,
 
   Time sTime(time, delta, eps);
 
-  int originIdx;
-  if (state->signals[index].origin < 0)
-    originIdx = index;
-  else
-    originIdx = state->signals[index].origin;
+  // track back origin signal
+  int originIdx = index;
+  while (state->signals[originIdx].origin >= 0) {
+    originIdx = state->signals[originIdx].origin;
+  }
 
   int bitOffset = (state->signals[index].detail.value -
                    state->signals[originIdx].detail.value) *

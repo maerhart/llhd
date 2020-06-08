@@ -292,7 +292,7 @@ struct InstOpConversion : public ConvertToLLVMPattern {
           // signal
           auto mallocSize = initBuilder.create<LLVM::ConstantOp>(
               rewriter.getUnknownLoc(), i64Ty,
-              rewriter.getI64IntegerAttr(size + 1));
+              rewriter.getI64IntegerAttr(size * 2));
           llvm::SmallVector<Value, 1> margs({mallocSize});
           auto mall = initBuilder
                           .create<LLVM::CallOp>(
@@ -587,44 +587,103 @@ struct ShrOpConversion : public ConvertToLLVMPattern {
 
     OperandAdaptor<ShrOp> transformed(operands);
     auto shrOp = cast<ShrOp>(op);
-    assert(!(shrOp.getType().getKind() == llhd::LLHDTypes::Sig) &&
-           "sig not yet supported");
 
-    // get widths
-    auto baseWidth = shrOp.getType().getIntOrFloatBitWidth();
-    auto hdnWidth = shrOp.hidden().getType().getIntOrFloatBitWidth();
-    auto full = baseWidth + hdnWidth;
+    if (auto resTy = shrOp.result().getType().dyn_cast<IntegerType>()) {
+      // get widths
+      auto baseWidth = shrOp.getType().getIntOrFloatBitWidth();
+      auto hdnWidth = shrOp.hidden().getType().getIntOrFloatBitWidth();
+      auto full = baseWidth + hdnWidth;
 
-    auto tmpTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), full);
+      auto tmpTy = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), full);
 
-    // extend all operands to the base and hidden combined  width
-    auto baseZext =
-        rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy, transformed.base());
-    auto hdnZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
-                                                 transformed.hidden());
-    auto amntZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
-                                                  transformed.amount());
+      // extend all operands to the base and hidden combined  width
+      auto baseZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                    transformed.base());
+      auto hdnZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                   transformed.hidden());
+      auto amntZext = rewriter.create<LLVM::ZExtOp>(op->getLoc(), tmpTy,
+                                                    transformed.amount());
 
-    // shift hidden operand to prepend to full value
-    auto hdnShAmnt = rewriter.create<LLVM::ConstantOp>(
-        op->getLoc(), tmpTy,
-        rewriter.getIntegerAttr(rewriter.getIntegerType(full), baseWidth));
-    auto hdnSh =
-        rewriter.create<LLVM::ShlOp>(op->getLoc(), tmpTy, hdnZext, hdnShAmnt);
+      // shift hidden operand to prepend to full value
+      auto hdnShAmnt = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), tmpTy,
+          rewriter.getIntegerAttr(rewriter.getIntegerType(full), baseWidth));
+      auto hdnSh =
+          rewriter.create<LLVM::ShlOp>(op->getLoc(), tmpTy, hdnZext, hdnShAmnt);
 
-    // combine base and hidden operands
-    auto combined =
-        rewriter.create<LLVM::OrOp>(op->getLoc(), tmpTy, hdnSh, baseZext);
+      // combine base and hidden operands
+      auto combined =
+          rewriter.create<LLVM::OrOp>(op->getLoc(), tmpTy, hdnSh, baseZext);
 
-    // perform the right shift
-    auto shifted =
-        rewriter.create<LLVM::LShrOp>(op->getLoc(), tmpTy, combined, amntZext);
+      // perform the right shift
+      auto shifted = rewriter.create<LLVM::LShrOp>(op->getLoc(), tmpTy,
+                                                   combined, amntZext);
 
-    // truncate to final width
-    rewriter.replaceOpWithNewOp<LLVM::TruncOp>(op, transformed.base().getType(),
-                                               shifted);
+      // truncate to final width
+      rewriter.replaceOpWithNewOp<LLVM::TruncOp>(
+          op, transformed.base().getType(), shifted);
 
-    return success();
+      return success();
+    } else if (auto resTy = shrOp.result().getType().dyn_cast<SigType>()) {
+      auto module = op->getParentOfType<ModuleOp>();
+
+      auto i8PtrTy = getVoidPtrType();
+      auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
+      auto i64Ty = LLVM::LLVMType::getInt64Ty(&getDialect());
+
+      // get add_subsignal runtime call
+      auto addSubSignature = LLVM::LLVMType::getFunctionTy(
+          i32Ty, {i8PtrTy, i32Ty, i8PtrTy, i64Ty, i64Ty}, false);
+      auto addSubFunc = getOrInsertFunction(module, rewriter, "add_subsignal",
+                                            addSubSignature);
+
+      // get state pointer from arguments
+      auto statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
+
+      // get signal pointer and offset
+      auto sigDetail = insertProbeSignal(module, rewriter, &getDialect(), op,
+                                         statePtr, transformed.base());
+      auto sigPtr = sigDetail.first;
+      auto offset = sigDetail.second;
+
+      auto zextAmnt = rewriter.create<LLVM::ZExtOp>(op->getLoc(), i64Ty,
+                                                    transformed.amount());
+
+      // adjust slice start point from signal's offset
+      auto adjustedAmnt =
+          rewriter.create<LLVM::AddOp>(op->getLoc(), offset, zextAmnt);
+
+      // shift pointer to the new start byte
+      auto ptrToInt =
+          rewriter.create<LLVM::PtrToIntOp>(op->getLoc(), i64Ty, sigPtr);
+      auto const8 = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(8));
+      auto ptrOffset =
+          rewriter.create<LLVM::UDivOp>(op->getLoc(), adjustedAmnt, const8);
+      auto shiftedPtr =
+          rewriter.create<LLVM::AddOp>(op->getLoc(), ptrToInt, ptrOffset);
+      auto newPtr =
+          rewriter.create<LLVM::IntToPtrOp>(op->getLoc(), i8PtrTy, shiftedPtr);
+
+      // compute offset into the first byte
+      auto bitOffset =
+          rewriter.create<LLVM::URemOp>(op->getLoc(), adjustedAmnt, const8);
+
+      auto lenConst = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i64Ty,
+          rewriter.getI64IntegerAttr(
+              resTy.getUnderlyingType().getIntOrFloatBitWidth()));
+
+      // add subsignal to the state
+      SmallVector<Value, 5> addSubArgs(
+          {statePtr, transformed.base(), newPtr, lenConst, bitOffset});
+      rewriter.replaceOpWithNewOp<LLVM::CallOp>(
+          op, i32Ty, rewriter.getSymbolRefAttr(addSubFunc), addSubArgs);
+
+      return success();
+    }
+
+    return failure();
   }
 };
 
