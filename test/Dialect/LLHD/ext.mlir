@@ -1,4 +1,4 @@
-// RUN: llhdc %s -mlir-print-op-generic -split-input-file -verify-diagnostics | llhdc | FileCheck %s
+// RUN: llhdc %s -mlir-print-op-generic -split-input-file -verify-diagnostics | llhdc | llhdc | FileCheck %s
 
 // CHECK-LABEL: @exts_integers
 // CHECK-SAME: %[[CI1:.*]]: i1
