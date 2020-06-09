@@ -2,6 +2,9 @@ name: Build and Test
 
 on: [push, pull_request]
 
+env:
+  LLVM_COMMIT: 288025494ef460c9c2481039be61cd53116d06ba
+
 jobs:
   lint:
     name: Check Formatting
@@ -31,13 +34,13 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-12
+        key: ${{ runner.os }}-llvm-install-${{ env.LLVM_COMMIT }}
     - name: Get LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
       uses: actions/checkout@v2
       with:
         repository: 'llvm/llvm-project'
-        ref: '288025494ef460c9c2481039be61cd53116d06ba'
+        ref: '${{ env.LLVM_COMMIT }}'
         path: 'llvm'
     - name: Install LLVM
       if: steps.cache-llvm.outputs.cache-hit != 'true'
@@ -57,7 +60,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: llvm
-        key: ${{ runner.os }}-llvm-install-12
+        key: ${{ runner.os }}-llvm-install-${{ env.LLVM_COMMIT }}
     - name: Get LLHD
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       uses: actions/checkout@v2
