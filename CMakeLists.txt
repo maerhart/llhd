@@ -39,6 +39,8 @@ include_directories(${PROJECT_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
+set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
+
 # add target for documentation generation
 add_custom_target(llhd-doc)
 
