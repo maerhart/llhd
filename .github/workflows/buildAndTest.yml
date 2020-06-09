@@ -75,8 +75,8 @@ jobs:
       run: |
         mkdir $GITHUB_WORKSPACE/llhd/build
         cd $GITHUB_WORKSPACE/llhd/build
-        cmake $GITHUB_WORKSPACE/llhd -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
-        cmake --build . --target mlir-doc
+        cmake $GITHUB_WORKSPACE/llhd -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/
+        cmake --build  $GITHUB_WORKSPACE/llhd/build --target mlir-doc
     - name: Add doc to target repo
       if: steps.cache-llvm.outputs.cache-hit == 'true'
       run: |
