@@ -842,6 +842,7 @@ static LogicalResult verify(llhd::RegOp op) {
       return failure();
     }
   }
+  return success();
 }
 
 #include "Dialect/LLHD/LLHDOpsEnums.cpp.inc"
