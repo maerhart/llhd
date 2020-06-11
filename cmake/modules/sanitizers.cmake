@@ -33,7 +33,9 @@ function(append value)
 endfunction()
 
 if (USE_SANITIZER)
-    append("-fno-omit-frame-pointer" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+    append("-fno-omit-frame-pointer"
+            CMAKE_C_FLAGS
+            CMAKE_CXX_FLAGS)
 
     if (UNIX)
 
@@ -47,38 +49,26 @@ if (USE_SANITIZER)
             append("-fsanitize=address,undefined"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
         elseif (USE_SANITIZER MATCHES "([Aa]ddress)")
             # Optional: -fno-optimize-sibling-calls -fsanitize-address-use-after-scope
             message(STATUS "Building with Address sanitizer")
             append("-fsanitize=address"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
         elseif (USE_SANITIZER MATCHES "([Mm]emory([Ww]ith[Oo]rigins)?)")
             # Optional: -fno-optimize-sibling-calls -fsanitize-memory-track-origins=2
             append("-fsanitize=memory"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
             if (USE_SANITIZER MATCHES "([Mm]emory[Ww]ith[Oo]rigins)")
                 message(STATUS "Building with MemoryWithOrigins sanitizer")
                 append("-fsanitize-memory-track-origins"
                         CMAKE_C_FLAGS
                         CMAKE_CXX_FLAGS
-                        CMAKE_EXE_LINKER_FLAGS
-                        CMAKE_MODULE_LINKER_FLAGS
-                        CMAKE_SHARED_LINKER_FLAGS
-                        CMAKE_STATIC_LINKER_FLAGS)
+                        CMAKE_SHARED_LINKER_FLAGS)
             else ()
                 message(STATUS "Building with Memory sanitizer")
             endif ()
@@ -87,37 +77,25 @@ if (USE_SANITIZER)
             append("-fsanitize=undefined"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
             if (EXISTS "${BLACKLIST_FILE}")
                 append("-fsanitize-blacklist=${BLACKLIST_FILE}"
                         CMAKE_C_FLAGS
                         CMAKE_CXX_FLAGS
-                        CMAKE_EXE_LINKER_FLAGS
-                        CMAKE_MODULE_LINKER_FLAGS
-                        CMAKE_SHARED_LINKER_FLAGS
-                        CMAKE_STATIC_LINKER_FLAGS)
+                        CMAKE_SHARED_LINKER_FLAGS)
             endif ()
         elseif (USE_SANITIZER MATCHES "([Tt]hread)")
             message(STATUS "Building with Thread sanitizer")
             append("-fsanitize=thread"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
         elseif (USE_SANITIZER MATCHES "([Ll]eak)")
             message(STATUS "Building with Leak sanitizer")
             append("-fsanitize=leak"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
         else ()
             message(
                     FATAL_ERROR "Unsupported value of USE_SANITIZER: ${USE_SANITIZER}")
@@ -128,10 +106,7 @@ if (USE_SANITIZER)
             append("-fsanitize=address"
                     CMAKE_C_FLAGS
                     CMAKE_CXX_FLAGS
-                    CMAKE_EXE_LINKER_FLAGS
-                    CMAKE_MODULE_LINKER_FLAGS
-                    CMAKE_SHARED_LINKER_FLAGS
-                    CMAKE_STATIC_LINKER_FLAGS)
+                    CMAKE_SHARED_LINKER_FLAGS)
         else ()
             message(
                     FATAL_ERROR
