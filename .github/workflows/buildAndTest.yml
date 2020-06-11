@@ -4,9 +4,9 @@ on: [push, pull_request]
 
 env:
   LLVM_COMMIT: 288025494ef460c9c2481039be61cd53116d06ba
-  CMAKE_FLAGS: '-DMLIR_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/llvm/'
+  CMAKE_FLAGS: '-DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/'
   CMAKE_TOOLCHAIN_FLAGS: '-DCMAKE_LINKER=lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++'
-  CMAKE_LIT_PATH: '-DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm-project/build/bin/llvm-lit'
+  CMAKE_LIT_PATH: '-DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit'
 
 jobs:
   lint:
