@@ -70,7 +70,7 @@ public:
   /// Return whether the given kind is of type Time
   static bool kindof(unsigned kind) { return kind == LLHDTypes::Time; }
 
-  /// Get a new isntance of type Time
+  /// Get a new instance of type Time
   static TimeType get(MLIRContext *context);
 
   /// Get the keyword for the time type
