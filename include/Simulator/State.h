@@ -142,6 +142,9 @@ struct State {
   /// Construct a new empty (at 0 time) state.
   State() = default;
 
+  /// State destructor, ensures all malloc'd signal regions are correctly free'd
+  ~State();
+
   /// Pop the head of the queue and update the simulation time.
   Slot popQueue();
 

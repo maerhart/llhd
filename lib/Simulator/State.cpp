@@ -115,6 +115,11 @@ void UpdateQueue::insertOrUpdate(Time time, int index, int bitOffset,
 // State
 //===----------------------------------------------------------------------===//
 
+State::~State() {
+  for (int i = 0; i < nSigs; i++)
+    std::free(signals[i].detail.value);
+}
+
 Slot State::popQueue() {
   assert(!queue.empty() && "the event queue is empty");
   Slot pop = queue.top();
