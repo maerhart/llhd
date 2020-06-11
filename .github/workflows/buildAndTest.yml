@@ -4,6 +4,9 @@ on: [push, pull_request]
 
 env:
   LLVM_COMMIT: 288025494ef460c9c2481039be61cd53116d06ba
+  CMAKE_FLAGS: '-DMLIR_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/llvm/'
+  CMAKE_TOOLCHAIN_FLAGS: '-DCMAKE_LINKER=lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++'
+  CMAKE_LIT_PATH: '-DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm-project/build/bin/llvm-lit'
 
 jobs:
   lint:
@@ -54,13 +57,13 @@ jobs:
       run: |
         mkdir $GITHUB_WORKSPACE/llhd/sanitizer-build
         cd $GITHUB_WORKSPACE/llhd/sanitizer-build
-        cmake $GITHUB_WORKSPACE/llhd -DCMAKE_BUILD_TYPE=Debug -DUSE_SANITIZER='Address;Undefined' -DCMAKE_LINKER=/usr/bin/lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
+        cmake $GITHUB_WORKSPACE/llhd -DCMAKE_BUILD_TYPE=Debug -DUSE_SANITIZER='Address;Undefined' ${{ env.CMAKE_FLAGS }} ${{ env.CMAKE_TOOLCHAIN_FLAGS }} ${{ env.CMAKE_LIT_PATH }}
         cmake --build . --target check-llhdc -- -j$(nproc)
     - name: Release build
       run: |
         mkdir $GITHUB_WORKSPACE/llhd/build
         cd $GITHUB_WORKSPACE/llhd/build
-        cmake $GITHUB_WORKSPACE/llhd -DCMAKE_BUILD_TYPE=Release -DCMAKE_LINKER=/usr/bin/lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm/build/bin/llvm-lit
+        cmake $GITHUB_WORKSPACE/llhd -DCMAKE_BUILD_TYPE=Release ${{ env.CMAKE_FLAGS }} ${{ env.CMAKE_TOOLCHAIN_FLAGS }} ${{ env.CMAKE_LIT_PATH }}
         cmake --build . --target check-llhdc -- -j$(nproc)
 
   docgen:
@@ -91,7 +94,7 @@ jobs:
       run: |
         mkdir $GITHUB_WORKSPACE/llhd/build
         cd $GITHUB_WORKSPACE/llhd/build
-        cmake $GITHUB_WORKSPACE/llhd -DMLIR_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm/install/lib/cmake/llvm/
+        cmake $GITHUB_WORKSPACE/llhd ${{ env.CMAKE_FLAGS }}
         cmake --build  . --target mlir-doc
     - name: Add doc to target repo
       if: steps.cache-llvm.outputs.cache-hit == 'true'
