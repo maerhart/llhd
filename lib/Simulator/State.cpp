@@ -140,6 +140,7 @@ int State::addSignalData(int index, std::string owner, uint8_t *value,
   int globalIdx = instances[owner].signalTable[index];
   signals[globalIdx].detail.value = value;
   signals[globalIdx].size = size;
+  return globalIdx;
 }
 
 void State::dumpSignal(llvm::raw_ostream &out, int index) {

@@ -751,6 +751,8 @@ static ParseResult parseRegOp(OpAsmParser &parser, OperationState &result) {
   operandSizes.push_back(gateOperands.size());
   result.addAttribute("operand_segment_sizes",
                       parser.getBuilder().getI32VectorAttr(operandSizes));
+
+  return success();
 }
 
 static void print(OpAsmPrinter &printer, llhd::RegOp op) {
@@ -840,6 +842,7 @@ static LogicalResult verify(llhd::RegOp op) {
       return failure();
     }
   }
+  return success();
 }
 
 #include "Dialect/LLHD/LLHDOpsEnums.cpp.inc"
