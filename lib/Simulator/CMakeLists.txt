@@ -11,7 +11,7 @@ add_mlir_library(LLHDSimState
     LLVMSupport
     )
 
-add_mlir_library(llhd-signals-runtime-wrappers  SHARED
+add_mlir_library(llhd-signals-runtime-wrappers SHARED
     signals-runtime-wrappers.cpp
 
     LINK_LIBS PUBLIC
