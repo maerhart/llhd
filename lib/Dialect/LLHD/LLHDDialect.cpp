@@ -83,7 +83,6 @@ static Type parseSigType(DialectAsmParser &parser) {
 Type LLHDDialect::parseType(DialectAsmParser &parser) const {
   llvm::StringRef typeKeyword;
   // parse the type keyword first
-  llvm::SMLoc loc = parser.getCurrentLocation();
   if (parser.parseKeyword(&typeKeyword))
     return Type();
   if (typeKeyword == SigType::getKeyword()) {

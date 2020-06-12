@@ -32,7 +32,7 @@ public:
                       DialectAsmPrinter &printer) const override;
 
   Operation *materializeConstant(OpBuilder &builder, Attribute value, Type type,
-                                 Location loc);
+                                 Location loc) override;
 };
 
 //===----------------------------------------------------------------------===//

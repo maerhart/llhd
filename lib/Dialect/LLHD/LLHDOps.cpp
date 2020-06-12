@@ -62,8 +62,8 @@ static LogicalResult verify(llhd::ExtsOp op) {
     return op.emitError("the target and result kinds have to match");
 
   auto len = op.lengthAttr().getInt();
-  unsigned outWidth;
-  unsigned inWidth;
+  unsigned outWidth = 0;
+  unsigned inWidth = 0;
   if (auto intRes = op.result().getType().dyn_cast<IntegerType>()) {
     outWidth = intRes.getIntOrFloatBitWidth();
     inWidth = op.target().getType().getIntOrFloatBitWidth();
