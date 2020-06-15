@@ -71,6 +71,34 @@ def LLHD_VecOp : LLHD_Op<"vec", [NoSideEffect, TypesMatchWith<
     let assemblyFormat = "`[` $values `]` attr-dict `:` type($result)";
 }
 
+def LLHD_TupleOp : LLHD_Op<"tuple", [NoSideEffect, TypesMatchWith<
+        "types of 'values' have to match the type of the corresponding 'result' tuple element",
+        "result", "values",
+        "$_self.cast<TupleType>().getTypes()">
+    ]> {
+
+    let summary = "Create a tuple from a list of values.";
+
+    let description = [{
+        The `llhd.tuple` operation creates a tuple from a list of SSA-values.
+
+        **Examples:**
+
+        ```
+        %c1 = llhd.const 1 : i32
+        %c2 = llhd.const 2 : i2
+        %sig = llhd.sig "sig_name" %c1 : i32
+        %vec = constant dense<[1, 2]> : vector<2xi32>
+        %tuple = llhd.tuple %c1, %c2, %vec, %sig : tuple<i32, i2, vector<2xi32>, !llhd.sig<i32>>
+        ```
+    }];
+
+    let arguments = (ins Variadic<AnyType>:$values);
+    let results = (outs AnyTuple:$result);
+
+    let assemblyFormat = "$values attr-dict `:` type($result)";
+}
+
 def LLHD_ExtsOp : LLHD_Op<"exts"> {
     let summary = "Extract a slice of consecutive elements.";
 
