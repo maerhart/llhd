@@ -26,11 +26,6 @@ void ProcessLoweringPass::runOnOperation() {
     } else if (numBlocks == 2) {
       Block &first = op.body().front();
       Block &last = op.body().back();
-      if (first.getOperations().size() != 1) {
-        op.emitOpError("Process-lowering: The first block must contain the "
-                       "BranchOp terminator from the standard dialect only!");
-        signalPassFailure();
-      }
       if (last.getArguments().size() != 0) {
         op.emitOpError("Process-lowering: The second block (containing the "
                        "llhd.wait) is not allowed to have arguments.");
@@ -72,7 +67,7 @@ void ProcessLoweringPass::runOnOperation() {
       op.emitOpError(
           "Process-lowering only supports processes with either one basic "
           "block terminated by a llhd.halt operation or two basic blocks where "
-          "the first one contains a std.br terminator only and the second one "
+          "the first one contains a std.br terminator and the second one "
           "is terminated by a llhd.wait operation.");
       signalPassFailure();
     }
@@ -96,7 +91,8 @@ void ProcessLoweringPass::runOnOperation() {
       Block &first = entity.body().front();
       Block &second = entity.body().back();
       // Delete the BranchOp operation in the entry block
-      first.clear();
+      first.getTerminator()->dropAllReferences();
+      first.getTerminator()->erase();
       // Move operations of second block in entry block.
       first.getOperations().splice(first.end(), second.getOperations());
       // Drop all references to the second block and delete it.

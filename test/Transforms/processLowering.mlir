@@ -58,19 +58,6 @@ llhd.proc @prbAndWaitNotObserved(%arg0 : !llhd.sig<i64>) -> () {
 
 // -----
 
-// Check that br is the only instruction in the entry block
-// expected-error @+1 {{Process-lowering: The first block must contain the BranchOp terminator from the standard dialect only!}}
-llhd.proc @multipleOpsInEntryBlock(%arg0 : !llhd.sig<i64>) -> () {
-    %time = llhd.const #llhd.time<0ns, 0d, 0e> : !llhd.time
-    %value = llhd.const 42 : i64
-    llhd.drv %arg0, %value after %time : !llhd.sig<i64>
-    br ^bb1
-^bb1:
-    llhd.wait ^bb1
-}
-
-// -----
-
 // Check that block arguments for the second block are not allowed.
 // expected-error @+1 {{Process-lowering: The second block (containing the llhd.wait) is not allowed to have arguments.}}
 llhd.proc @blockArgumentsNotAllowed(%arg0 : !llhd.sig<i64>) -> () {
@@ -113,7 +100,7 @@ llhd.proc @secondBlockTerminatedByWait() -> () {
 // -----
 
 // Check that there are not more than two blocks.
-// expected-error @+1 {{Process-lowering only supports processes with either one basic block terminated by a llhd.halt operation or two basic blocks where the first one contains a std.br terminator only and the second one is terminated by a llhd.wait operation.}}
+// expected-error @+1 {{Process-lowering only supports processes with either one basic block terminated by a llhd.halt operation or two basic blocks where the first one contains a std.br terminator and the second one is terminated by a llhd.wait operation.}}
 llhd.proc @moreThanTwoBlocksNotAllowed() -> () {
     br ^bb1
 ^bb1:
