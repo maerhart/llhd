@@ -91,6 +91,46 @@ static LogicalResult verify(llhd::ExtsOp op) {
 }
 
 //===----------------------------------------------------------------------===//
+// DextsOp
+//===----------------------------------------------------------------------===//
+
+static LogicalResult verify(llhd::DextsOp op) {
+  // check that the kinds match
+  if (op.target().getType().getKind() != op.result().getType().getKind())
+    return op.emitError("the target and result kinds have to match");
+
+  unsigned outWidth;
+  unsigned inWidth;
+  if (auto intRes = op.result().getType().dyn_cast<IntegerType>()) {
+    outWidth = intRes.getIntOrFloatBitWidth();
+    inWidth = op.target().getType().getIntOrFloatBitWidth();
+  } else if (auto sigRes = op.result().getType().dyn_cast<llhd::SigType>()) {
+    outWidth = sigRes.getUnderlyingType().getIntOrFloatBitWidth();
+    inWidth = op.target()
+                  .getType()
+                  .dyn_cast<llhd::SigType>()
+                  .getUnderlyingType()
+                  .getIntOrFloatBitWidth();
+  } else if (auto vecRes = op.result().getType().dyn_cast<VectorType>()) {
+    outWidth = vecRes.getNumElements();
+    auto inTy = op.target().getType().dyn_cast<VectorType>();
+    inWidth = inTy.getNumElements();
+
+    // check that the vector element type is not converted
+    if (vecRes.getElementType() != inTy.getElementType())
+      op.emitError("vector element type conversion is not allowed, expected ")
+          << inTy.getElementType() << " but got " << vecRes.getElementType();
+  }
+
+  // check length is at most the same as target's type
+  if (outWidth > inWidth)
+    return op.emitError(
+        "the result width cannot be larger than the target width");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // NegOp
 //===----------------------------------------------------------------------===//
 
