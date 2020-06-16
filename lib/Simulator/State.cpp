@@ -58,7 +58,7 @@ Signal::Signal(int origin, uint8_t *value, uint64_t size, uint64_t offset)
 bool Signal::operator==(const Signal &rhs) const {
   if (owner != rhs.owner || name != rhs.name || size != rhs.size)
     return false;
-  for (int i = 0; i < size; i++) {
+  for (uint64_t i = 0; i < size; i++) {
     if (detail.value[i] != rhs.detail.value[i])
       return false;
   }
@@ -100,7 +100,7 @@ void Slot::insertChange(int index, int bitOffset, APInt &bytes) {
 //===----------------------------------------------------------------------===//
 void UpdateQueue::insertOrUpdate(Time time, int index, int bitOffset,
                                  APInt &bytes) {
-  for (int i = 0; i < c.size(); i++) {
+  for (unsigned long i = 0; i < c.size(); i++) {
     if (time == c[i].time) {
       c[i].insertChange(index, bitOffset, bytes);
       return;
@@ -199,7 +199,7 @@ void State::dumpLayout() {
 
 void State::dumpSignalTriggers() {
   llvm::errs() << "::------------- Signal information -------------::\n";
-  for (int i = 0; i < signals.size(); i++) {
+  for (unsigned long i = 0; i < signals.size(); i++) {
     llvm::errs() << signals[i].owner << "/" << signals[i].name
                  << " triggers: " << signals[i].owner << " ";
     for (auto trig : signals[i].triggers) {
