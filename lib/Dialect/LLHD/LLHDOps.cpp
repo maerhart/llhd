@@ -118,18 +118,6 @@ unsigned llhd::DextsOp::getTargetWidth() {
   return 0;
 }
 
-Type llhd::DextsOp::getSliceVectorElementTypeOrNull() {
-  if (auto vecTy = result().getType().dyn_cast<VectorType>())
-    return vecTy.getElementType();
-  return NULL;
-}
-
-Type llhd::DextsOp::getTargetVectorElementTypeOrNull() {
-  if (auto vecTy = target().getType().dyn_cast<VectorType>())
-    return vecTy.getElementType();
-  return NULL;
-}
-
 //===----------------------------------------------------------------------===//
 // NegOp
 //===----------------------------------------------------------------------===//
