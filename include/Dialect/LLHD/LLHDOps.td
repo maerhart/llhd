@@ -106,12 +106,10 @@ def LLHD_ExtsOp : LLHD_Op<"exts"> {
 }
 
 def LLHD_DextsOp : LLHD_Op<"dexts", [NoSideEffect,
-         PredOpTrait<"the target operand and result kinds have to match",
-            CPred<"$target.getType().getKind() == $result.getType().getKind()">>,
+         SameTypeArbitraryWidth<"'target' and 'result' types have to match apart from their width",
+            "$target", "$result">,
          PredOpTrait<"the result width cannot be larger than the target operand width",
-            CPred<"this->getTargetWidth() >= this->getSliceWidth()">>,
-         PredOpTrait<"the vector element types have to match",
-            CPred<"this->getSliceVectorElementTypeOrNull() == this->getTargetVectorElementTypeOrNull()">>
+            CPred<"this->getTargetWidth() >= this->getSliceWidth()">>
         ]> {
     let summary = "Dynamically extract a slice of consecutive elements";
 
@@ -140,12 +138,7 @@ def LLHD_DextsOp : LLHD_Op<"dexts", [NoSideEffect,
 
     let extraClassDeclaration = [{
         unsigned getSliceWidth();
-
         unsigned getTargetWidth();
-
-        Type getSliceVectorElementTypeOrNull();
-
-        Type getTargetVectorElementTypeOrNull();
     }];
 }
 

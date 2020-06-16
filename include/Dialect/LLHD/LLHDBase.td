@@ -80,5 +80,15 @@ class LLHD_ArithmeticOrBitwiseOp<string mnemonic, list<OpTrait> traits = []> :
     }];
 }
 
+//===----------------------------------------------------------------------===//
+// LLHD trait definitions
+//===----------------------------------------------------------------------===//
+
+class SameTypeArbitraryWidth<string desc, string lhs, string rhs> : PredOpTrait<desc,
+    CPred<"[&](){ Type lhsType=" # lhs # ".getType(); Type rhsType=" # rhs #
+        ".getType(); return (lhsType.getKind() == rhsType.getKind()) &&" #
+        "(!lhsType.isa<ShapedType>() || (lhsType.cast<ShapedType>().getElementType() == rhsType.cast<ShapedType>().getElementType()));}()">>;
+
+
 
 #endif // LLHD_BASE
