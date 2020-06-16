@@ -114,7 +114,7 @@ func @illegal_out_too_big(%c : i32) {
 // -----
 
 func @dexts_illegal_conversion(%s : !llhd.sig<i32>, %i : i1) {
-    // expected-error @+1 {{the target and result kinds have to match}}
+    // expected-error @+1 {{'llhd.dexts' op failed to verify that the target operand and result kinds have to match}}
     %0 = llhd.dexts %s, %i : (!llhd.sig<i32>, i1) -> i10
 
     return
@@ -123,7 +123,7 @@ func @dexts_illegal_conversion(%s : !llhd.sig<i32>, %i : i1) {
 // -----
 
 func @dexts_illegal_out_too_wide(%c : i32, %i : i1) {
-    // expected-error @+1 {{the result width cannot be larger than the target width}}
+    // expected-error @+1 {{'llhd.dexts' op failed to verify that the result width cannot be larger than the target operand width}}
     %0 = llhd.dexts %c, %i : (i32, i1) -> i40
 
     return
@@ -132,7 +132,7 @@ func @dexts_illegal_out_too_wide(%c : i32, %i : i1) {
 // -----
 
 func @dexts_illegal_vec_element_conversion(%c : vector<1xi1>, %i : i1) {
-    // expected-error @+1 {{vector element type conversion is not allowed, expected 'i1' but got 'i10'}}
+    // expected-error @+1 {{'llhd.dexts' op failed to verify that the vector element types have to match}}
     %0 = llhd.dexts %c, %i : (vector<1xi1>, i1) -> vector<1xi10>
 
     return

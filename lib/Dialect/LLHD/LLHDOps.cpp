@@ -94,40 +94,40 @@ static LogicalResult verify(llhd::ExtsOp op) {
 // DextsOp
 //===----------------------------------------------------------------------===//
 
-static LogicalResult verify(llhd::DextsOp op) {
-  // check that the kinds match
-  if (op.target().getType().getKind() != op.result().getType().getKind())
-    return op.emitError("the target and result kinds have to match");
-
-  unsigned outWidth;
-  unsigned inWidth;
-  if (auto intRes = op.result().getType().dyn_cast<IntegerType>()) {
-    outWidth = intRes.getIntOrFloatBitWidth();
-    inWidth = op.target().getType().getIntOrFloatBitWidth();
-  } else if (auto sigRes = op.result().getType().dyn_cast<llhd::SigType>()) {
-    outWidth = sigRes.getUnderlyingType().getIntOrFloatBitWidth();
-    inWidth = op.target()
-                  .getType()
-                  .dyn_cast<llhd::SigType>()
-                  .getUnderlyingType()
-                  .getIntOrFloatBitWidth();
-  } else if (auto vecRes = op.result().getType().dyn_cast<VectorType>()) {
-    outWidth = vecRes.getNumElements();
-    auto inTy = op.target().getType().dyn_cast<VectorType>();
-    inWidth = inTy.getNumElements();
-
-    // check that the vector element type is not converted
-    if (vecRes.getElementType() != inTy.getElementType())
-      op.emitError("vector element type conversion is not allowed, expected ")
-          << inTy.getElementType() << " but got " << vecRes.getElementType();
+unsigned llhd::DextsOp::getSliceWidth() {
+  auto resultTy = result().getType();
+  if (resultTy.isSignlessInteger()) {
+    return resultTy.getIntOrFloatBitWidth();
+  } else if (auto sigRes = resultTy.dyn_cast<llhd::SigType>()) {
+    return sigRes.getUnderlyingType().getIntOrFloatBitWidth();
+  } else if (auto vecRes = resultTy.dyn_cast<VectorType>()) {
+    return vecRes.getNumElements();
   }
+  return 0;
+}
 
-  // check length is at most the same as target's type
-  if (outWidth > inWidth)
-    return op.emitError(
-        "the result width cannot be larger than the target width");
+unsigned llhd::DextsOp::getTargetWidth() {
+  auto targetTy = target().getType();
+  if (targetTy.isSignlessInteger()) {
+    return targetTy.getIntOrFloatBitWidth();
+  } else if (auto sigRes = targetTy.dyn_cast<llhd::SigType>()) {
+    return sigRes.getUnderlyingType().getIntOrFloatBitWidth();
+  } else if (auto vecRes = targetTy.dyn_cast<VectorType>()) {
+    return vecRes.getNumElements();
+  }
+  return 0;
+}
 
-  return success();
+Type llhd::DextsOp::getSliceVectorElementTypeOrNull() {
+  if (auto vecTy = result().getType().dyn_cast<VectorType>())
+    return vecTy.getElementType();
+  return NULL;
+}
+
+Type llhd::DextsOp::getTargetVectorElementTypeOrNull() {
+  if (auto vecTy = target().getType().dyn_cast<VectorType>())
+    return vecTy.getElementType();
+  return NULL;
 }
 
 //===----------------------------------------------------------------------===//
@@ -849,9 +849,9 @@ static LogicalResult verify(llhd::RegOp op) {
            << op.gateMask().size() << " modes, but " << op.triggers().size()
            << " triggers!";
 
-  // Number of non-zero elements in 'gateMask' has to be the same as the size of
-  // the gates variadic, also each number from 1 to size-1 has to occur only
-  // once and in increasing order
+  // Number of non-zero elements in 'gateMask' has to be the same as the size
+  // of the gates variadic, also each number from 1 to size-1 has to occur
+  // only once and in increasing order
   unsigned counter = 0;
   unsigned prevElement = 0;
   for (Attribute maskElem : op.gateMask().getValue()) {
