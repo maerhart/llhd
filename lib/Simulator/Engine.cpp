@@ -182,7 +182,7 @@ void Engine::buildLayout(ModuleOp module) {
 }
 
 void Engine::walkEntity(EntityOp entity, Instance &child) {
-  auto res = entity.walk([&](Operation *op) -> WalkResult {
+  entity.walk([&](Operation *op) -> WalkResult {
     assert(op);
 
     //! add signal to signal table
@@ -205,7 +205,7 @@ void Engine::walkEntity(EntityOp entity, Instance &child) {
         for (auto arg : inst.inputs()) {
           // check if the argument comes from a parent's argument
           if (auto a = arg.dyn_cast<BlockArgument>()) {
-            int argInd = a.getArgNumber();
+            unsigned int argInd = a.getArgNumber();
             // the argument comes either from one of the inputs or one of the
             // outputs
             if (argInd < newChild.sensitivityList.size())
@@ -231,7 +231,7 @@ void Engine::walkEntity(EntityOp entity, Instance &child) {
         for (auto out : inst.outputs()) {
           // check if comes from arg
           if (auto a = out.dyn_cast<BlockArgument>()) {
-            int argInd = a.getArgNumber();
+            unsigned int argInd = a.getArgNumber();
             // the argument comes either from one of the inputs or one of the
             // outputs
             if (argInd < newChild.sensitivityList.size())

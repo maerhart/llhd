@@ -25,7 +25,7 @@ int alloc_signal(State *state, int index, char *owner, uint8_t *value,
 int gather_signal(State *state, char *name, char *owner) {
   assert(state && "gather_signal: state not found");
   std::string sName(name), sOwner(owner);
-  for (int i = 0; i < state->signals.size(); i++) {
+  for (unsigned long i = 0; i < state->signals.size(); i++) {
     if (state->signals[i].name == sName && state->signals[i].owner == sOwner)
       return i;
   }

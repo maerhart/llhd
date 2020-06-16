@@ -56,8 +56,7 @@ LLVM::LLVMFuncOp getOrInsertFunction(ModuleOp &module,
     if (insertBodyAndTerminator) {
       func.addEntryBlock();
       OpBuilder b(func.getBody());
-      auto ret =
-          b.create<LLVM::ReturnOp>(rewriter.getUnknownLoc(), ValueRange());
+      b.create<LLVM::ReturnOp>(rewriter.getUnknownLoc(), ValueRange());
     }
   }
   return func;
@@ -137,7 +136,7 @@ struct EntityOpConversion : public ConvertToLLVMPattern {
     // add state, signal table and arguments table arguments
     intermediate.addInputs(
         ArrayRef<Type>({i8PtrTy, i32Ty.getPointerTo(), i32Ty.getPointerTo()}));
-    for (int i = 0; i < entityOp.getNumArguments(); i++)
+    for (unsigned i = 0; i < entityOp.getNumArguments(); i++)
       intermediate.addInputs(i, voidTy);
     rewriter.applySignatureConversion(&entityOp.getBody(), intermediate);
 
@@ -149,7 +148,7 @@ struct EntityOpConversion : public ConvertToLLVMPattern {
     final.addInputs(1, i32Ty.getPointerTo());
     final.addInputs(2, i32Ty.getPointerTo());
 
-    for (int i = 0; i < entityOp.getNumArguments(); i++) {
+    for (unsigned i = 0; i < entityOp.getNumArguments(); i++) {
       // create gep and load operations from arguments table for each original
       // argument
       auto index = bodyBuilder.create<LLVM::ConstantOp>(
@@ -305,8 +304,8 @@ struct InstOpConversion : public ConvertToLLVMPattern {
                   .cast<LLVM::LLVMType>()
                   .getPointerTo(),
               mall);
-          auto initStore = initBuilder.create<LLVM::StoreOp>(
-              rewriter.getUnknownLoc(), initDef, bitcast);
+          initBuilder.create<LLVM::StoreOp>(rewriter.getUnknownLoc(), initDef,
+                                            bitcast);
           Value initStatePtr = initFunc.getArgument(0);
           llvm::SmallVector<Value, 5> args(
               {initStatePtr, indexConst, owner, mall, sizeConst});
@@ -345,16 +344,10 @@ struct SigOpConversion : public ConvertToLLVMPattern {
     // get adapted opreands
     OperandAdaptor<SigOp> transformed(operands);
     // get sig operation
-    auto sigOp = cast<SigOp>(op);
     // get parent module
-    auto module = op->getParentOfType<ModuleOp>();
 
     // collect llvm types
-    auto voidTy = getVoidType();
-    auto i8PtrTy = getVoidPtrType();
-    auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
-    auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
 
     //! load the signal's index from the signal table
     // get signal table argument
@@ -394,10 +387,6 @@ struct PrbOpConversion : public ConvertToLLVMPattern {
     auto module = op->getParentOfType<ModuleOp>();
 
     // collect llvm types
-    auto voidTy = getVoidType();
-    auto i8PtrTy = getVoidPtrType();
-    auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
-    auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
     auto finalTy =
         typeConverter.convertType(prbOp.getType()).cast<LLVM::LLVMType>();
 
@@ -460,7 +449,6 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     // collect used llvm types
     auto voidTy = getVoidType();
     auto i8PtrTy = getVoidPtrType();
-    auto i1Ty = LLVM::LLVMType::getIntNTy(typeConverter.getDialect(), 1);
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
     auto i64Ty = LLVM::LLVMType::getInt64Ty(typeConverter.getDialect());
 
@@ -806,7 +794,6 @@ struct ExtsOpConversion : public ConvertToLLVMPattern {
     auto i8PtrTy = getVoidPtrType();
     auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
     auto i64Ty = LLVM::LLVMType::getInt64Ty(&getDialect());
-    auto sigTy = LLVM::LLVMType::getStructTy(&getDialect(), {i8PtrTy, i64Ty});
 
     // get attributes as constants
     auto startConst = rewriter.create<LLVM::ConstantOp>(op->getLoc(), indexTy,
@@ -909,7 +896,6 @@ void llhd::populateLLHDToLLVMConversionPatterns(
 }
 
 void LLHDToLLVMLoweringPass::runOnOperation() {
-  auto module = getOperation();
   OwningRewritePatternList patterns;
   auto converter = mlir::LLVMTypeConverter(&getContext());
 
