@@ -343,8 +343,6 @@ struct SigOpConversion : public ConvertToLLVMPattern {
                   ConversionPatternRewriter &rewriter) const override {
     // get adapted opreands
     OperandAdaptor<SigOp> transformed(operands);
-    // get sig operation
-    // get parent module
 
     // collect llvm types
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
