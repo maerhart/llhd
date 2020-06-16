@@ -35,7 +35,10 @@ Engine::Engine(llvm::raw_ostream &out, OwningModuleRef &module,
 
   mlir::PassManager pm(&context);
   pm.addPass(llhd::createConvertLLHDToLLVMPass());
-  pm.run(*module);
+  if (failed(pm.run(*module))) {
+    llvm::errs() << "failed to convert module to LLVM";
+    exit(EXIT_FAILURE);
+  }
 
   this->module = *module;
 

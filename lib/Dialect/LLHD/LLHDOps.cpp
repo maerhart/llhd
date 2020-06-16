@@ -346,8 +346,8 @@ static void printArgumentList(OpAsmPrinter &printer,
 
 static void print(OpAsmPrinter &printer, llhd::EntityOp op) {
   std::vector<BlockArgument> ins, outs;
-  int64_t n_ins = op.insAttr().getInt();
-  for (int64_t i = 0; i < op.body().front().getArguments().size(); ++i) {
+  uint64_t n_ins = op.insAttr().getInt();
+  for (uint64_t i = 0; i < op.body().front().getArguments().size(); ++i) {
     // no furter verification for the attribute type is required, already
     // handled by verify.
     if (i < n_ins) {
@@ -372,12 +372,12 @@ static void print(OpAsmPrinter &printer, llhd::EntityOp op) {
 }
 
 static LogicalResult verify(llhd::EntityOp op) {
-  Block &body = op.body().front();
-  int64_t nIns = op.insAttr().getInt();
+  uint64_t numArgs = op.getNumArguments();
+  uint64_t nIns = op.insAttr().getInt();
   // check that there is at most one flag for each argument
-  if (body.getArguments().size() < nIns) {
+  if (numArgs < nIns) {
     op.emitError("Cannot have more inputs than arguments, expected at most ")
-        << body.getArguments().size() << " but got: " << nIns;
+        << numArgs << " but got: " << nIns;
     return failure();
   }
   return success();
