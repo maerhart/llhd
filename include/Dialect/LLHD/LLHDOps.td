@@ -118,7 +118,6 @@ def LLHD_ExtsOp : LLHD_Op<"exts"> {
         %2 = llhd.sig %0 : i32
         %3 = llhd.exts %2, 0, 5 : !llhd.sig<i32> to !llhd.sig<i5>
         ```
-
     }];
 
     let arguments = (ins AnyTypeOf<[AnySignlessInteger, LLHD_AnySigType]>: $target,
