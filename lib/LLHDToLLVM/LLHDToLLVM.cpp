@@ -120,7 +120,7 @@ struct EntityOpConversion : public ConvertToLLVMPattern {
     // reset signal counter
     signalCounter = 0;
     // get adapted operands
-    OperandAdaptor<EntityOp> transformed(operands);
+    EntityOpAdaptor transformed(operands);
     // get entity operation
     auto entityOp = cast<EntityOp>(op);
 
@@ -342,7 +342,7 @@ struct SigOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
     // get adapted opreands
-    OperandAdaptor<SigOp> transformed(operands);
+    SigOpAdaptor transformed(operands);
 
     // collect llvm types
     auto i32Ty = LLVM::LLVMType::getInt32Ty(typeConverter.getDialect());
@@ -378,7 +378,7 @@ struct PrbOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
     // get adapted operands
-    OperandAdaptor<PrbOp> transformed(operands);
+    PrbOpAdaptor transformed(operands);
     // get probe operation
     auto prbOp = cast<PrbOp>(op);
     // get parent module
@@ -438,7 +438,7 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
     // get adapted operands;
-    OperandAdaptor<DrvOp> transformed(operands);
+    DrvOpAdaptor transformed(operands);
     // get drive operation
     auto drvOp = cast<DrvOp>(op);
     // get parent module
@@ -535,7 +535,7 @@ struct NotOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
     // get adapted operands
-    OperandAdaptor<NotOp> transformed(operands);
+    NotOpAdaptor transformed(operands);
     // get `llhd.not` operation
     auto notOp = cast<NotOp>(op);
     // get integer width
@@ -571,7 +571,7 @@ struct ShrOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
 
-    OperandAdaptor<ShrOp> transformed(operands);
+    ShrOpAdaptor transformed(operands);
     auto shrOp = cast<ShrOp>(op);
 
     if (auto resTy = shrOp.result().getType().dyn_cast<IntegerType>()) {
@@ -686,7 +686,7 @@ struct ShlOpConversion : public ConvertToLLVMPattern {
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const override {
 
-    OperandAdaptor<ShlOp> transformed(operands);
+    ShlOpAdaptor transformed(operands);
     auto shlOp = cast<ShlOp>(op);
     assert(!(shlOp.getType().getKind() == llhd::LLHDTypes::Sig) &&
            "sig not yet supported");
@@ -786,7 +786,7 @@ struct ExtsOpConversion : public ConvertToLLVMPattern {
                   ConversionPatternRewriter &rewriter) const override {
     auto extsOp = cast<ExtsOp>(op);
 
-    OperandAdaptor<ExtsOp> transformed(operands);
+    ExtsOpAdaptor transformed(operands);
 
     auto indexTy = typeConverter.convertType(extsOp.startAttr().getType());
     auto i8PtrTy = getVoidPtrType();
@@ -904,8 +904,7 @@ void LLHDToLLVMLoweringPass::runOnOperation() {
   target.addIllegalOp<InstOp>();
 
   // apply partial conversion
-  if (failed(
-          applyPartialConversion(getOperation(), target, patterns, &converter)))
+  if (failed(applyPartialConversion(getOperation(), target, patterns)))
     signalPassFailure();
 
   // setup full conversion
@@ -916,7 +915,7 @@ void LLHDToLLVMLoweringPass::runOnOperation() {
   target.addLegalOp<ModuleOp, ModuleTerminatorOp>();
 
   // apply full conversion
-  if (failed(applyFullConversion(getOperation(), target, patterns, &converter)))
+  if (failed(applyFullConversion(getOperation(), target, patterns)))
     signalPassFailure();
 }
 
