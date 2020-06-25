@@ -60,7 +60,7 @@ def LLHD_VecOp : LLHD_Op<"vec", [NoSideEffect, TypesMatchWith<
         %c1 = llhd.const 1 : i32
         %c2 = llhd.const 2 : i32
         %c3 = llhd.const 3 : i32
-        %vec = llhd.vec [%c1, %c2, %c3] : vector<3xi32>
+        %vec = llhd.vec %c1, %c2, %c3 : vector<3xi32>
         %elem = vector.extractelement %vec[%c1 : i32] : vector<3xi32>
         ```
     }];
@@ -68,7 +68,7 @@ def LLHD_VecOp : LLHD_Op<"vec", [NoSideEffect, TypesMatchWith<
     let arguments = (ins Variadic<AnyType>:$values);
     let results = (outs AnyVector:$result);
 
-    let assemblyFormat = "`[` $values `]` attr-dict `:` type($result)";
+    let assemblyFormat = "$values attr-dict `:` type($result)";
 }
 
 def LLHD_TupleOp : LLHD_Op<"tuple", [NoSideEffect, TypesMatchWith<
