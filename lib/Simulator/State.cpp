@@ -95,6 +95,8 @@ void Slot::insertChange(int index, int bitOffset, APInt &bytes) {
   changes[index].push_back(std::make_pair(bitOffset, bytes));
 }
 
+void Slot::insertChange(std::string inst) { scheduled.push_back(inst); }
+
 //===----------------------------------------------------------------------===//
 // UpdateQueue
 //===----------------------------------------------------------------------===//
@@ -111,13 +113,35 @@ void UpdateQueue::insertOrUpdate(Time time, int index, int bitOffset,
   push(newSlot);
 }
 
+void UpdateQueue::insertOrUpdate(Time time, std::string inst) {
+  for (unsigned long i = 0; i < c.size(); i++) {
+    if (time == c[i].time) {
+      c[i].insertChange(inst);
+      return;
+    }
+  }
+  Slot newSlot(time);
+  newSlot.insertChange(inst);
+  push(newSlot);
+}
+
 //===----------------------------------------------------------------------===//
 // State
 //===----------------------------------------------------------------------===//
 
 State::~State() {
   for (int i = 0; i < nSigs; i++)
-    std::free(signals[i].detail.value);
+    if (signals[i].detail.value)
+      std::free(signals[i].detail.value);
+
+  for (auto &entry : instances) {
+    auto inst = entry.getValue();
+    if (!inst.isEntity && inst.procState) {
+      std::free(inst.procState->inst);
+      std::free(inst.procState->senses);
+      std::free(inst.procState);
+    }
+  }
 }
 
 Slot State::popQueue() {
@@ -133,11 +157,25 @@ void State::pushQueue(Time t, int index, int bitOffset, APInt &bytes) {
   Time newTime = time + t;
   queue.insertOrUpdate(newTime, index, bitOffset, bytes);
 }
+void State::pushQueue(Time t, std::string inst) {
+  Time newTime = time + t;
+  queue.insertOrUpdate(newTime, inst);
+}
 
 /// Add a new signal to the state. Returns the index of the new signal.
 int State::addSignal(std::string name, std::string owner) {
   signals.push_back(Signal(name, owner));
   return signals.size() - 1;
+}
+
+void State::addProcPtr(std::string name, ProcState *procStatePtr) {
+  instances[name].procState = procStatePtr;
+  // copy string to owner name ptr
+  name.copy(instances[name].procState->inst, name.size());
+  // ensure string is null-terminated
+  instances[name].procState->inst[name.size()] = '\0';
+  // ensure initial resume point is 0
+  instances[name].procState->resume = 0;
 }
 
 int State::addSignalData(int index, std::string owner, uint8_t *value,
@@ -178,6 +216,7 @@ void State::dumpLayout() {
   for (auto &inst : instances) {
     llvm::errs() << inst.getKey().str() << ":\n";
     llvm::errs() << "---parent: " << inst.getValue().parent << "\n";
+    llvm::errs() << "---isEntity: " << inst.getValue().isEntity << "\n";
     llvm::errs() << "---signal table: ";
     for (auto sig : inst.getValue().signalTable) {
       llvm::errs() << sig << " ";

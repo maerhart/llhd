@@ -22,6 +22,12 @@ int alloc_signal(State *state, int index, char *owner, uint8_t *value,
   return state->addSignalData(index, sOwner, value, size);
 }
 
+void alloc_proc(State *state, char *owner, ProcState *procState) {
+  assert(state && "alloc_proc: state not found");
+  std::string sOwner(owner);
+  state->addProcPtr(sOwner, procState);
+}
+
 int gather_signal(State *state, char *name, char *owner) {
   assert(state && "gather_signal: state not found");
   std::string sName(name), sOwner(owner);
@@ -70,6 +76,16 @@ int add_subsignal(mlir::llhd::sim::State *state, int origin, uint8_t *ptr,
   int size = std::ceil((len + offset) / 8.0);
   state->signals.push_back(Signal(origin, ptr, size, offset));
   return (state->signals.size() - 1);
+}
+
+void llhd_suspend(State *state, ProcState *procState, int time, int delta,
+                  int eps) {
+  std::string instS(procState->inst);
+  // add new scheduled wake up if a time is specified
+  if (time || delta || eps) {
+    Time sTime(time, delta, eps);
+    state->pushQueue(sTime, instS);
+  }
 }
 
 //===----------------------------------------------------------------------===//

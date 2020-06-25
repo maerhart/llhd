@@ -101,8 +101,13 @@ struct Slot {
   /// Insert a change.
   void insertChange(int index, int bitOffset, llvm::APInt &bytes);
 
+  /// Insert a scheduled process wakeup
+  void insertChange(std::string inst);
+
   // <signal-index, vec<(offset, new-value)>>
   std::map<int, std::vector<std::pair<int, llvm::APInt>>> changes;
+  // processes with scheduled wakeup
+  std::vector<std::string> scheduled;
   Time time;
 };
 
@@ -114,13 +119,27 @@ public:
   /// Check wheter a slot for the given time already exists. If that's the case,
   /// add the new change to it, else create a new slot and push it to the queue.
   void insertOrUpdate(Time time, int index, int bitOffset, llvm::APInt &bytes);
+
+  /// Check wheter a slot for the given time already exists. If that's the case,
+  /// add the scheduled wakeup to it, else create a new slot and push it to the
+  /// queue.
+  void insertOrUpdate(Time time, std::string inst);
+};
+
+/// State structure for process persistence across suspension
+struct ProcState {
+  char *inst;
+  int resume;
+  bool *senses;
+  uint8_t *resumeState;
 };
 
 /// The simulator internal representation of an instance
 struct Instance {
   Instance() = default;
 
-  Instance(std::string name, std::string parent) : name(name), parent(parent) {}
+  Instance(std::string name, std::string parent)
+      : name(name), parent(parent), procState(nullptr) {}
 
   // the instance name
   std::string name;
@@ -128,12 +147,14 @@ struct Instance {
   std::string parent;
   // the instance's base unit
   std::string unit;
+  bool isEntity;
   // the signals the unit defines
   std::vector<int> signalTable;
   // the input list
   std::vector<int> sensitivityList;
   // the output list
   std::vector<int> outputs;
+  ProcState *procState;
 };
 
 /// The simulator's state. It contains the current simulation time, signal
@@ -151,6 +172,9 @@ struct State {
   /// Push a new event in the event queue.
   void pushQueue(Time time, int index, int bitOffset, llvm::APInt &bytes);
 
+  /// Push a new scheduled wakeup event in the event queue.
+  void pushQueue(Time time, std::string inst);
+
   /// Get the signal at position i in the signal list.
   Signal getSignal(int index);
 
@@ -160,8 +184,11 @@ struct State {
   int addSignalData(int index, std::string owner, uint8_t *value,
                     uint64_t size);
 
-  /// Dump a signal to the out stream. One entry is added for every instance the
-  /// signal appears in.
+  /// Add a pointer to the process persistence state to a process instance
+  void addProcPtr(std::string name, ProcState *procStatePtr);
+
+  /// Dump a signal to the out stream. One entry is added for every instance
+  /// the signal appears in.
   void dumpSignal(llvm::raw_ostream &out, int index);
 
   /// Dump the instance layout. Used for testing purposes.

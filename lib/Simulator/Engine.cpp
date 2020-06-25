@@ -116,11 +116,27 @@ int Engine::simulate(int n) {
       wakeupQueue.push_back(state->signals[change.first].owner);
       // add sensitive instances
       for (auto inst : state->signals[change.first].triggers) {
+        if (!state->instances[inst].isEntity) {
+          // find the index of the signal in the sensitivity list
+          auto &sensList = state->instances[inst].sensitivityList;
+          auto it = std::find(sensList.begin(), sensList.end(), change.first);
+          // skip if sense disabled
+          if (sensList.end() != it &&
+              state->instances[inst].procState->senses[it - sensList.begin()] ==
+                  0)
+            continue;
+        }
         wakeupQueue.push_back(inst);
       }
 
       // dump the updated signal
       state->dumpSignal(out, change.first);
+    }
+
+    // wakeup scheduled
+    // TODO: don't wakeup if already woken up by observed signal
+    for (auto inst : pop.scheduled) {
+      wakeupQueue.push_back(inst);
     }
 
     // clear temporary subsignals
@@ -138,7 +154,13 @@ int Engine::simulate(int n) {
                              outputList.end());
       auto argTable = sensitivityList.data();
 
-      SmallVector<void *, 3> args({&state, &sigTable, &argTable});
+      // gather instance arguments for unit invocation
+      SmallVector<void *, 3> args;
+      if (state->instances[inst].isEntity)
+        args.assign({&state, &sigTable, &argTable});
+      else {
+        args.assign({&state, &state->instances[inst].procState, &argTable});
+      }
 
       // run the unit
       auto invocationResult = engine->invoke(name, args);
@@ -169,6 +191,7 @@ void Engine::buildLayout(ModuleOp module) {
   // recursively walk entities starting at root.
   walkEntity(rootEntity, rootInst);
 
+  rootInst.isEntity = true;
   // store root instance
   state->instances[rootInst.name] = rootInst;
 
@@ -199,8 +222,8 @@ void Engine::walkEntity(EntityOp entity, Instance &child) {
       // skip self-recursion
       if (inst.callee() == child.name)
         return WalkResult::advance();
-      if (auto e = op->getParentOfType<ModuleOp>().lookupSymbol<EntityOp>(
-              inst.callee())) {
+      if (auto e =
+              op->getParentOfType<ModuleOp>().lookupSymbol(inst.callee())) {
         Instance newChild(inst.name().str(), child.name);
         newChild.unit = inst.callee().str();
 
@@ -255,8 +278,12 @@ void Engine::walkEntity(EntityOp entity, Instance &child) {
           }
         }
 
-        // recursively walk new entity
-        walkEntity(e, newChild);
+        // recursively walk new entity, otherwise it is a process and cannot
+        // define new signals
+        if (auto ent = dyn_cast<EntityOp>(e)) {
+          newChild.isEntity = true;
+          walkEntity(ent, newChild);
+        }
 
         // store the created instance
         state->instances[newChild.name] = newChild;

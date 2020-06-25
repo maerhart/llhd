@@ -6,6 +6,8 @@
 #include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/IR/Dominance.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 namespace mlir {
@@ -21,6 +23,9 @@ using namespace mlir::llhd;
 namespace {
 // keep a counter to infer a signal's index in his entity's signal table
 static int signalCounter = 0;
+// keep a counter to infer the resume index after a wait instruction in a
+// process
+static int resumeCounter = 0;
 //===----------------------------------------------------------------------===//
 // Helpers
 //===----------------------------------------------------------------------===//
@@ -100,6 +105,154 @@ std::pair<Value, Value> insertProbeSignal(ModuleOp &module,
   auto offset = rewriter.create<LLVM::LoadOp>(op->getLoc(), i64Ty, offsetPtr);
 
   return std::pair<Value, Value>(sigPtr, offset);
+}
+
+/// Gather the types of values that are used outside of the block they're
+/// defined in. An LLVMType structure containing those types, in order of
+/// appearance, is returned.
+LLVM::LLVMType getProcPersistenceTy(LLVM::LLVMDialect *dialect,
+                                    LLVMTypeConverter &converter,
+                                    ProcOp &proc) {
+  SmallVector<LLVM::LLVMType, 3> types = SmallVector<LLVM::LLVMType, 3>();
+
+  auto i32Ty = LLVM::LLVMType::getInt32Ty(dialect);
+
+  proc.walk([&](Operation *op) -> WalkResult {
+    if (op->isUsedOutsideOfBlock(op->getBlock())) {
+      if (op->getResult(0).getType().isa<IntegerType>())
+        types.push_back(converter.convertType(op->getResult(0).getType())
+                            .cast<LLVM::LLVMType>());
+      else if (op->getResult(0).getType().isa<SigType>())
+        types.push_back(i32Ty);
+    }
+    return WalkResult::advance();
+  });
+  return LLVM::LLVMType::getStructTy(dialect, types);
+}
+
+/// Insert a comparison block that either jumps to the trueDest block, if the
+/// resume index mathces the current index, or to falseDest otherwise. If no
+/// falseDest is provided, the next block is taken insead.
+void insertComparisonBlock(ConversionPatternRewriter &rewriter,
+                           LLVM::LLVMDialect *dialect, Region *body,
+                           Value resumeIdx, int currIdx, Block *trueDest,
+                           Block *falseDest = nullptr) {
+  auto i32Ty = LLVM::LLVMType::getInt32Ty(dialect);
+  // redirect entry block to a first comparison block. If it is a fresh start,
+  // start from where original entry would have jumped, else the process is in
+  // an illegal state and jump to the abort block
+  auto secondBlock = ++body->begin();
+  auto newBlock = rewriter.createBlock(body, secondBlock);
+  auto cmpIdx = rewriter.create<LLVM::ConstantOp>(
+      rewriter.getUnknownLoc(), i32Ty, rewriter.getI32IntegerAttr(currIdx));
+  auto cmpRes = rewriter.create<LLVM::ICmpOp>(
+      rewriter.getUnknownLoc(), LLVM::ICmpPredicate::eq, resumeIdx, cmpIdx);
+
+  // default to jump to the next block for false
+  if (!falseDest)
+    falseDest = &*secondBlock;
+
+  rewriter.create<LLVM::CondBrOp>(rewriter.getUnknownLoc(), cmpRes, trueDest,
+                                  falseDest);
+
+  // redirect entry block terminator to the new comparison block
+  auto entryTer = body->front().getTerminator();
+  entryTer->setSuccessor(newBlock, 0);
+}
+
+/// Insert the blocks and operations needed to persist values across suspension,
+/// as well as ones needed to resume execution at the right spot.
+void insertPersistence(LLVMTypeConverter &converter,
+                       ConversionPatternRewriter &rewriter,
+                       LLVM::LLVMDialect *dialect, ProcOp &proc,
+                       LLVM::LLVMType &stateTy, LLVM::LLVMFuncOp &converted) {
+  auto i32Ty = LLVM::LLVMType::getInt32Ty(dialect);
+  DominanceInfo dom(converted);
+
+  // load resume index
+  rewriter.setInsertionPoint(converted.getBody().front().getTerminator());
+  auto zeroC = rewriter.create<LLVM::ConstantOp>(
+      rewriter.getUnknownLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+  auto oneC = rewriter.create<LLVM::ConstantOp>(rewriter.getUnknownLoc(), i32Ty,
+                                                rewriter.getI32IntegerAttr(1));
+  auto gep = rewriter.create<LLVM::GEPOp>(
+      rewriter.getUnknownLoc(), i32Ty.getPointerTo(), converted.getArgument(1),
+      ArrayRef<Value>({zeroC, oneC}));
+  auto larg =
+      rewriter.create<LLVM::LoadOp>(rewriter.getUnknownLoc(), i32Ty, gep);
+
+  // insert an abort block as the last block
+  auto abortBlock =
+      rewriter.createBlock(&converted.getBody(), converted.getBody().end());
+  rewriter.create<LLVM::ReturnOp>(rewriter.getUnknownLoc(), ValueRange());
+
+  auto body = &converted.getBody();
+  assert(body->front().getTerminator()->getNumSuccessors() > 0 &&
+         "the process entry block is expected to branch to another block");
+  // redirect entry block to a first comparison block. If on a fresh start,
+  // start from where original entry would have jumped, else the process is in
+  // an illegal state and jump to the abort block
+  insertComparisonBlock(rewriter, dialect, body, larg, 0,
+                        body->front().getTerminator()->getSuccessor(0),
+                        abortBlock);
+
+  // keep track of the index in the presistence table of the operation we
+  // are currently processing
+  int i = 0;
+  // keep track of the current resume index for comparison blocks
+  int waitInd = 0;
+
+  // insert persistence keeping for each operation escaping its parent block
+  converted.walk([&](Operation *op) -> WalkResult {
+    if (op->isUsedOutsideOfBlock(op->getBlock()) &&
+        op->getResult(0) != larg.getResult() &&
+        !(op->getResult(0).getType().isa<TimeType>())) {
+      auto elemTy = stateTy.getStructElementType(3).getStructElementType(i);
+
+      // store the value escaping it's definingn block in the persistence table
+      rewriter.setInsertionPointAfter(op);
+      auto zeroC0 = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+      auto threeC0 = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(3));
+      auto indC0 = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(i));
+      auto gep0 = rewriter.create<LLVM::GEPOp>(
+          op->getLoc(), elemTy.getPointerTo(), converted.getArgument(1),
+          ArrayRef<Value>({zeroC0, threeC0, indC0}));
+      rewriter.create<LLVM::StoreOp>(op->getLoc(), op->getResult(0), gep0);
+
+      // load the value from the persistence table and substitute the original
+      // use with it
+      for (auto &use : op->getUses()) {
+        if (dom.properlyDominates(op->getBlock(), use.getOwner()->getBlock())) {
+          auto user = use.getOwner();
+          rewriter.setInsertionPointToStart(user->getBlock());
+          auto zeroC1 = rewriter.create<LLVM::ConstantOp>(
+              user->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+          auto threeC1 = rewriter.create<LLVM::ConstantOp>(
+              user->getLoc(), i32Ty, rewriter.getI32IntegerAttr(3));
+          auto indC1 = rewriter.create<LLVM::ConstantOp>(
+              user->getLoc(), i32Ty, rewriter.getI32IntegerAttr(i));
+          auto gep1 = rewriter.create<LLVM::GEPOp>(
+              user->getLoc(), elemTy.getPointerTo(), converted.getArgument(1),
+              ArrayRef<Value>({zeroC1, threeC1, indC1}));
+          auto load1 =
+              rewriter.create<LLVM::LoadOp>(user->getLoc(), elemTy, gep1);
+
+          use.set(load1);
+        }
+      }
+      i++;
+    }
+
+    // insert a comparison block for wait operations
+    if (auto wait = dyn_cast<WaitOp>(op)) {
+      insertComparisonBlock(rewriter, dialect, body, larg, ++waitInd,
+                            wait.dest());
+    }
+    return WalkResult::advance();
+  });
 }
 
 //===----------------------------------------------------------------------===//
@@ -199,6 +352,249 @@ struct TerminatorOpConversion : public ConvertToLLVMPattern {
   }
 };
 
+/// Convert an `llhd.proc` operation to llvm dialect. This inserts the required
+/// logic to resume execution after an `llhd.wait` operation, as well as state
+/// keeping for values that need to persist across suspension.
+struct ProcOpConversion : public ConvertToLLVMPattern {
+  explicit ProcOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(ProcOp::getOperationName(), ctx, typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto procOp = cast<ProcOp>(op);
+
+    // get adapted operands
+    ProcOpAdaptor transformed(operands);
+
+    // collect llvm types
+    auto voidTy = getVoidType();
+    auto i8PtrTy = getVoidPtrType();
+    auto i1Ty = LLVM::LLVMType::getInt1Ty(&getDialect());
+    auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
+    auto senseTableTy =
+        LLVM::LLVMType::getArrayTy(i1Ty, procOp.insAttr().getInt())
+            .getPointerTo();
+    auto stateTy = LLVM::LLVMType::getStructTy(
+        /* current instance  */ i8PtrTy, /* resume index */ i32Ty,
+        /* sense flags */ senseTableTy,
+        getProcPersistenceTy(&getDialect(), typeConverter, procOp));
+    auto argTableTy =
+        LLVM::LLVMType::getArrayTy(i32Ty, procOp.getNumArguments())
+            .getPointerTo();
+
+    // reset the resume index counter
+    resumeCounter = 0;
+
+    // have an intermediate signature conversion to add the arguments for the
+    // state, process-specific state and signal arguments table
+    LLVMTypeConverter::SignatureConversion intermediate(
+        procOp.getNumArguments());
+    // add state, process state table and arguments table arguments
+    ArrayRef<Type> procSigTys({i8PtrTy, stateTy.getPointerTo(), argTableTy});
+    intermediate.addInputs(procSigTys);
+    for (unsigned int i = 0; i < procOp.getNumArguments(); i++)
+      intermediate.addInputs(i, voidTy);
+    rewriter.applySignatureConversion(&procOp.getBody(), intermediate);
+
+    OpBuilder bodyBuilder =
+        OpBuilder::atBlockBegin(&procOp.getBlocks().front());
+    LLVMTypeConverter::SignatureConversion final(
+        intermediate.getConvertedTypes().size());
+    final.addInputs(0, i8PtrTy);
+    final.addInputs(1, stateTy.getPointerTo());
+    final.addInputs(2, argTableTy);
+
+    auto zeroC = bodyBuilder.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+    for (unsigned int i = 0; i < procOp.getNumArguments(); i++) {
+      // create gep and load operations from arguments table for each original
+      // argument
+      auto index = bodyBuilder.create<LLVM::ConstantOp>(
+          rewriter.getUnknownLoc(), i32Ty, rewriter.getI32IntegerAttr(i));
+      auto bitcast = bodyBuilder.create<LLVM::GEPOp>(
+          rewriter.getUnknownLoc(), i32Ty.getPointerTo(), procOp.getArgument(2),
+          ArrayRef<Value>({zeroC, index}));
+      auto load =
+          bodyBuilder.create<LLVM::LoadOp>(rewriter.getUnknownLoc(), bitcast);
+      // remap i-th original argument to the loaded value
+      final.remapInput(i + 3, load.getResult());
+    }
+
+    rewriter.applySignatureConversion(&procOp.getBody(), final);
+
+    // converted entity signature
+    auto funcTy = LLVM::LLVMType::getFunctionTy(
+        voidTy, {i8PtrTy, stateTy.getPointerTo(), argTableTy}, false);
+    // create the llvm function
+    auto llvmFunc = rewriter.create<LLVM::LLVMFuncOp>(op->getLoc(),
+                                                      procOp.getName(), funcTy);
+
+    // inline the entity region in the new llvm function
+    rewriter.inlineRegionBefore(procOp.getBody(), llvmFunc.getBody(),
+                                llvmFunc.end());
+
+    insertPersistence(typeConverter, rewriter, &getDialect(), procOp, stateTy,
+                      llvmFunc);
+
+    rewriter.eraseOp(op);
+
+    return success();
+  }
+};
+
+/// Convert an `llhd.halt` operation to llvm dialect. This zeroes out all the
+/// senses and returns, effectively making the process unable to be invoked
+/// again.
+struct HaltOpConversion : public ConvertToLLVMPattern {
+  explicit HaltOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(HaltOp::getOperationName(), ctx, typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto i1Ty = LLVM::LLVMType::getInt1Ty(&getDialect());
+    auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
+
+    auto llvmFunc = op->getParentOfType<LLVM::LLVMFuncOp>();
+    auto procState = llvmFunc.getArgument(1);
+    auto senseTableTy = procState.getType()
+                            .cast<LLVM::LLVMType>()
+                            .getPointerElementTy()
+                            .getStructElementType(2)
+                            .getPointerElementTy();
+
+    // get senses ptr from process state argument
+    auto zeroC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+    auto twoC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(2));
+    auto sensePtrGep = rewriter.create<LLVM::GEPOp>(
+        op->getLoc(), senseTableTy.getPointerTo().getPointerTo(), procState,
+        ArrayRef<Value>({zeroC, twoC}));
+    auto sensePtr = rewriter.create<LLVM::LoadOp>(
+        op->getLoc(), senseTableTy.getPointerTo(), sensePtrGep);
+
+    // zero out all the senses flags
+    for (unsigned int i = 0; i < senseTableTy.getArrayNumElements(); i++) {
+      auto indC = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(i));
+      auto zeroB = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i1Ty, rewriter.getI32IntegerAttr(0));
+      auto senseElemPtr = rewriter.create<LLVM::GEPOp>(
+          op->getLoc(), i1Ty.getPointerTo(), sensePtr,
+          ArrayRef<Value>({zeroC, indC}));
+      rewriter.create<LLVM::StoreOp>(op->getLoc(), zeroB, senseElemPtr);
+    }
+
+    rewriter.replaceOpWithNewOp<LLVM::ReturnOp>(op, ValueRange());
+    return success();
+  }
+};
+
+/// Covnert an `llhd.wait` operation to llvm dialect. This sets the current
+/// resume point, sets the observed senses (if present) and schedules the timed
+/// wake up (if present).
+struct WaitOpConversion : public ConvertToLLVMPattern {
+  explicit WaitOpConversion(MLIRContext *ctx, LLVMTypeConverter &typeConverter)
+      : ConvertToLLVMPattern(WaitOp::getOperationName(), ctx, typeConverter) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto waitOp = cast<WaitOp>(op);
+    WaitOpAdaptor transformed(operands, nullptr);
+    auto llvmFunc = op->getParentOfType<LLVM::LLVMFuncOp>();
+
+    auto voidTy = getVoidType();
+    auto i8PtrTy = getVoidPtrType();
+    auto i1Ty = LLVM::LLVMType::getInt1Ty(&getDialect());
+    auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
+
+    // get llhd_suspend runtime function
+    auto llhdSuspendTy = LLVM::LLVMType::getFunctionTy(
+        voidTy, {i8PtrTy, i8PtrTy, i32Ty, i32Ty, i32Ty}, false);
+    auto module = op->getParentOfType<ModuleOp>();
+    auto llhdSuspendFunc =
+        getOrInsertFunction(module, rewriter, "llhd_suspend", llhdSuspendTy);
+
+    auto statePtr = llvmFunc.getArgument(0);
+    auto procState = llvmFunc.getArgument(1);
+    auto procStateTy = procState.getType().dyn_cast<LLVM::LLVMType>();
+    auto senseTableTy = procStateTy.getPointerElementTy()
+                            .getStructElementType(2)
+                            .getPointerElementTy();
+
+    // get senses ptr
+    auto zeroC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+    auto oneC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(1));
+    auto twoC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(2));
+    auto sensePtrGep = rewriter.create<LLVM::GEPOp>(
+        op->getLoc(), senseTableTy.getPointerTo().getPointerTo(), procState,
+        ArrayRef<Value>({zeroC, twoC}));
+    auto sensePtr = rewriter.create<LLVM::LoadOp>(
+        op->getLoc(), senseTableTy.getPointerTo(), sensePtrGep);
+
+    // set senses flags
+    // TODO: actually handle observed signals
+    for (unsigned int i = 0; i < senseTableTy.getArrayNumElements(); i++) {
+      auto indC = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(i));
+      auto zeroB = rewriter.create<LLVM::ConstantOp>(
+          op->getLoc(), i1Ty, rewriter.getI32IntegerAttr(0));
+      auto senseElemPtr = rewriter.create<LLVM::GEPOp>(
+          op->getLoc(), i1Ty.getPointerTo(), sensePtr,
+          ArrayRef<Value>({zeroC, indC}));
+      rewriter.create<LLVM::StoreOp>(op->getLoc(), zeroB, senseElemPtr);
+    }
+
+    // get time constats, if present
+    Value realTimeConst;
+    Value deltaConst;
+    Value epsConst;
+    if (waitOp.timeMutable().size() > 0) {
+      auto timeAttr = cast<llhd::ConstOp>(waitOp.time().getDefiningOp())
+                          .valueAttr()
+                          .dyn_cast<TimeAttr>();
+      // get real time as an attribute
+      auto realTimeAttr = rewriter.getI32IntegerAttr(timeAttr.getTime());
+      // create new time const operation
+      realTimeConst =
+          rewriter.create<LLVM::ConstantOp>(op->getLoc(), i32Ty, realTimeAttr);
+      // get the delta step as an attribute
+      auto deltaAttr = rewriter.getI32IntegerAttr(timeAttr.getDelta());
+      // create new delta const operation
+      deltaConst =
+          rewriter.create<LLVM::ConstantOp>(op->getLoc(), i32Ty, deltaAttr);
+      // get the epsilon step as an attribute
+      auto epsAttr = rewriter.getI32IntegerAttr(timeAttr.getEps());
+      // create new eps const operation
+      epsConst =
+          rewriter.create<LLVM::ConstantOp>(op->getLoc(), i32Ty, epsAttr);
+    }
+
+    auto procStateBC =
+        rewriter.create<LLVM::BitcastOp>(op->getLoc(), i8PtrTy, procState);
+    auto resumeIdxC = rewriter.create<LLVM::ConstantOp>(
+        op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(++resumeCounter));
+    auto resumeIdxPtr =
+        rewriter.create<LLVM::GEPOp>(op->getLoc(), i32Ty.getPointerTo(),
+                                     procState, ArrayRef<Value>({zeroC, oneC}));
+    rewriter.create<LLVM::StoreOp>(op->getLoc(), resumeIdxC, resumeIdxPtr);
+
+    SmallVector<Value, 5> args(
+        {statePtr, procStateBC, realTimeConst, deltaConst, epsConst});
+    rewriter.create<LLVM::CallOp>(
+        op->getLoc(), voidTy, rewriter.getSymbolRefAttr(llhdSuspendFunc), args);
+
+    rewriter.replaceOpWithNewOp<LLVM::ReturnOp>(op, ValueRange());
+    return success();
+  }
+};
+
 /// Lower an llhd.inst operation to llvm. This generates malloc calls and
 /// alloc_signal calls (to store the pointer into the state) for each signal in
 /// the instantiated entity.
@@ -216,6 +612,7 @@ struct InstOpConversion : public ConvertToLLVMPattern {
 
     auto voidTy = getVoidType();
     auto i8PtrTy = getVoidPtrType();
+    auto i1Ty = LLVM::LLVMType::getInt1Ty(&getDialect());
     auto i32Ty = LLVM::LLVMType::getInt32Ty(&getDialect());
     auto i64Ty = LLVM::LLVMType::getInt64Ty(&getDialect());
 
@@ -239,31 +636,38 @@ struct InstOpConversion : public ConvertToLLVMPattern {
     auto sigFunc =
         getOrInsertFunction(module, rewriter, allocCall, allocSigFuncTy);
 
+    // get or insert alloc_proc library call definition
+    auto allocProcFuncTy = LLVM::LLVMType::getFunctionTy(
+        voidTy, {i8PtrTy, i8PtrTy, i8PtrTy, i8PtrTy}, false);
+    auto allocProcFunc =
+        getOrInsertFunction(module, rewriter, "alloc_proc", allocProcFuncTy);
+
+    Value initStatePtr = initFunc.getArgument(0);
+
     // get builder with insertion point before the init function terminator
     OpBuilder initBuilder =
         OpBuilder::atBlockTerminator(&initFunc.getBody().getBlocks().front());
 
-    if (auto child = module.lookupSymbol<EntityOp>(instOp.callee())) {
-      // use the instance name to retrieve the signal table of the instance, and
-      // insert the pointers in the global signal table
-      auto ownerName = instOp.name();
-      //! get or create owner name string
-      Value owner;
+    // use the instance name to retrieve the instance from the state
+    auto ownerName = instOp.name();
+    //! get or create owner name string
+    Value owner;
 
-      auto parentSym =
+    auto parentSym =
+        module.lookupSymbol<LLVM::GlobalOp>("instance." + ownerName.str());
+    if (!parentSym) {
+      owner = LLVM::createGlobalString(
+          rewriter.getUnknownLoc(), initBuilder, "instance." + ownerName.str(),
+          ownerName.str() + '\0', LLVM::Linkage::Internal,
+          typeConverter.getDialect());
+      parentSym =
           module.lookupSymbol<LLVM::GlobalOp>("instance." + ownerName.str());
-      if (!parentSym) {
-        owner = LLVM::createGlobalString(
-            rewriter.getUnknownLoc(), initBuilder,
-            "instance." + ownerName.str(), ownerName.str() + '\0',
-            LLVM::Linkage::Internal, typeConverter.getDialect());
-        parentSym =
-            module.lookupSymbol<LLVM::GlobalOp>("instance." + ownerName.str());
-      } else {
-        owner = getGlobalString(rewriter.getUnknownLoc(), initBuilder,
-                                typeConverter, parentSym);
-      }
+    } else {
+      owner = getGlobalString(rewriter.getUnknownLoc(), initBuilder,
+                              typeConverter, parentSym);
+    }
 
+    if (auto child = module.lookupSymbol<EntityOp>(instOp.callee())) {
       // walk over the unit and generate mallocs for each one of its signals
       // index of the signal in the unit's signal table
       int initCounter = 0;
@@ -306,7 +710,7 @@ struct InstOpConversion : public ConvertToLLVMPattern {
               mall);
           initBuilder.create<LLVM::StoreOp>(rewriter.getUnknownLoc(), initDef,
                                             bitcast);
-          Value initStatePtr = initFunc.getArgument(0);
+
           llvm::SmallVector<Value, 5> args(
               {initStatePtr, indexConst, owner, mall, sizeConst});
           initBuilder.create<LLVM::CallOp>(rewriter.getUnknownLoc(), i32Ty,
@@ -315,6 +719,85 @@ struct InstOpConversion : public ConvertToLLVMPattern {
         }
         return WalkResult::advance();
       });
+    } else if (auto proc = module.lookupSymbol<ProcOp>(instOp.callee())) {
+      auto sensesPtrTy =
+          LLVM::LLVMType::getArrayTy(i1Ty, instOp.inputs().size())
+              .getPointerTo();
+      auto procStatePtrTy =
+          LLVM::LLVMType::getStructTy(
+              i8PtrTy, i32Ty, sensesPtrTy,
+              getProcPersistenceTy(&getDialect(), typeConverter, proc))
+              .getPointerTo();
+
+      auto zeroC = initBuilder.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(0));
+      auto oneC = initBuilder.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(1));
+      auto twoC = initBuilder.create<LLVM::ConstantOp>(
+          op->getLoc(), i32Ty, rewriter.getI32IntegerAttr(2));
+
+      // malloc space for proc state
+      auto procStateNullPtr =
+          initBuilder.create<LLVM::NullOp>(op->getLoc(), procStatePtrTy);
+      auto procStateGep = initBuilder.create<LLVM::GEPOp>(
+          op->getLoc(), procStatePtrTy, procStateNullPtr,
+          ArrayRef<Value>({oneC}));
+      auto procStateSize = initBuilder.create<LLVM::PtrToIntOp>(
+          op->getLoc(), i64Ty, procStateGep);
+      llvm::SmallVector<Value, 1> procStateMArgs({procStateSize});
+      auto procStateMall =
+          initBuilder
+              .create<LLVM::CallOp>(rewriter.getUnknownLoc(), i8PtrTy,
+                                    rewriter.getSymbolRefAttr(mallFunc),
+                                    procStateMArgs)
+              .getResult(0);
+
+      // malloc space for owner name
+      auto strSizeC = initBuilder.create<LLVM::ConstantOp>(
+          op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(ownerName.size()));
+
+      llvm::SmallVector<Value, 1> strMallArgs({strSizeC});
+      auto strMall = initBuilder
+                         .create<LLVM::CallOp>(
+                             rewriter.getUnknownLoc(), i8PtrTy,
+                             rewriter.getSymbolRefAttr(mallFunc), strMallArgs)
+                         .getResult(0);
+      auto procStateBC = initBuilder.create<LLVM::BitcastOp>(
+          op->getLoc(), procStatePtrTy, procStateMall);
+      auto procStateOwnerPtr = initBuilder.create<LLVM::GEPOp>(
+          op->getLoc(), i8PtrTy.getPointerTo(), procStateBC,
+          ArrayRef<Value>({zeroC, zeroC}));
+      initBuilder.create<LLVM::StoreOp>(op->getLoc(), strMall,
+                                        procStateOwnerPtr);
+
+      // malloc space for senses
+      auto sensesNullPtr =
+          initBuilder.create<LLVM::NullOp>(op->getLoc(), sensesPtrTy);
+      auto sensesGep = initBuilder.create<LLVM::GEPOp>(
+          op->getLoc(), sensesPtrTy, sensesNullPtr, ArrayRef<Value>({oneC}));
+      auto sensesSize =
+          initBuilder.create<LLVM::PtrToIntOp>(op->getLoc(), i64Ty, sensesGep);
+      SmallVector<Value, 1> senseMArgs({sensesSize});
+      auto sensesMall = initBuilder
+                            .create<LLVM::CallOp>(
+                                rewriter.getUnknownLoc(), i8PtrTy,
+                                rewriter.getSymbolRefAttr(mallFunc), senseMArgs)
+                            .getResult(0);
+
+      // store senses ptr in procstate
+      auto sensesBC = initBuilder.create<LLVM::BitcastOp>(
+          op->getLoc(), sensesPtrTy, sensesMall);
+      auto procStateSensesPtr = initBuilder.create<LLVM::GEPOp>(
+          op->getLoc(), sensesPtrTy.getPointerTo(), procStateBC,
+          ArrayRef<Value>({zeroC, twoC}));
+      initBuilder.create<LLVM::StoreOp>(op->getLoc(), sensesBC,
+                                        procStateSensesPtr);
+
+      SmallVector<Value, 4> allocProcArgs(
+          {initStatePtr, owner, procStateMall, sensesMall});
+      initBuilder.create<LLVM::CallOp>(op->getLoc(), voidTy,
+                                       rewriter.getSymbolRefAttr(allocProcFunc),
+                                       allocProcArgs);
     }
 
     rewriter.eraseOp(op);
@@ -466,7 +949,11 @@ struct DrvOpConversion : public ConvertToLLVMPattern {
     // get state pointer from function arguments
     Value statePtr = op->getParentOfType<LLVM::LLVMFuncOp>().getArgument(0);
 
-    int sigWidth = drvOp.value().getType().getIntOrFloatBitWidth();
+    int sigWidth = drvOp.signal()
+                       .getType()
+                       .dyn_cast<SigType>()
+                       .getUnderlyingType()
+                       .getIntOrFloatBitWidth();
 
     auto widthConst = rewriter.create<LLVM::ConstantOp>(
         op->getLoc(), i64Ty, rewriter.getI64IntegerAttr(sigWidth));
@@ -887,7 +1374,8 @@ void llhd::populateLLHDToLLVMConversionPatterns(
   // patterns.insert<NotOpConversion, AndOpConversion>(ctx, converter);
   patterns.insert<AndOpConversion, OrOpConversion, XorOpConversion>(converter);
   // unit conversion patterns
-  patterns.insert<EntityOpConversion, TerminatorOpConversion>(ctx, converter);
+  patterns.insert<EntityOpConversion, TerminatorOpConversion, ProcOpConversion,
+                  WaitOpConversion, HaltOpConversion>(ctx, converter);
   // signal conversion patterns
   patterns.insert<SigOpConversion, PrbOpConversion, DrvOpConversion>(ctx,
                                                                      converter);
