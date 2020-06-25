@@ -192,11 +192,11 @@ def LLHD_InssOp : LLHD_Op<"inss",
         ```mlir
         %itarget = llhd.const 123 : i32
         %islice = llhd.const 2 : i2
-        %0 = llhd.inss %islice, %itarget, 0 : i2 into i32
+        %0 = llhd.inss %itarget, %islice, 0 : i32, i2
 
         %vtarget = constant dense<[1,2,3]> : vector<3xi32>
         %vslice = constant dense<[4,5]> : vector<2xi32>
-        %1 = llhd.inss %vslice, %vtarget, 0 : vector<2xi32> into vector<3xi32>
+        %1 = llhd.inss %vtarget, %vslice, 0 : vector<3xi32>, vector<2xi32>
         ```
     }];
 
@@ -207,8 +207,8 @@ def LLHD_InssOp : LLHD_Op<"inss",
     let results = (outs AnyTypeOf<[AnySignlessInteger, AnyVector]>: $result);
 
     let assemblyFormat = [{
-        $slice `,` $target `,` $start attr-dict `:`
-        type($slice) `into` type($target)
+        $target `,` $slice `,` $start attr-dict `:`
+        type($target) `,` type($slice)
     }];
 
     let extraClassDeclaration = [{
@@ -250,11 +250,11 @@ def LLHD_InsfOp : LLHD_Op<"insf",
         ```mlir
         %target = constant dense<[1,2,3]> : vector<3xi8>
         %element = llhd.const 2 : i8
-        %0 = llhd.insf %element, %target, 0 : i8 into vector<3xi8>
+        %0 = llhd.insf %target, %element, 0 : vector<3xi8>, i8
 
-        %tuptarget = llhd.tuple(%element, %target) : tuple<i8, vector<3xi8>
+        %tuptarget = llhd.tuple %element, %target : tuple<i8, vector<3xi8>
         %newelement = llhd.const 4 : i8
-        %1 = llhd.insf %newelement, %tuptarget, 0 : i8 into tuple<i8, vector<3xi8>
+        %1 = llhd.insf %tuptarget, %newelement, 0 : tuple<i8, vector<3xi8>>, i8
         ```
     }];
 
@@ -265,8 +265,8 @@ def LLHD_InsfOp : LLHD_Op<"insf",
     let results = (outs AnyTypeOf<[AnyVector, AnyTuple]>: $result);
 
     let assemblyFormat = [{
-        $element `,` $target `,` $index attr-dict `:`
-        type($element) `into` type($target)
+        $target `,` $element `,` $index attr-dict `:`
+        type($target) `,` type($element)
     }];
 
     let extraClassDeclaration = [{
