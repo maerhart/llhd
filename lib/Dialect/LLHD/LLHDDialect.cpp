@@ -119,7 +119,7 @@ void LLHDDialect::printType(Type type, DialectAsmPrinter &printer) const {
   }
 
   default:
-    break;
+    llvm_unreachable("unknown LLHD type");
   }
 }
 
@@ -195,7 +195,7 @@ void LLHDDialect::printAttribute(Attribute attr,
     break;
   }
   default:
-    break;
+    llvm_unreachable("unknown LLHD attribute");
   }
 }
 
